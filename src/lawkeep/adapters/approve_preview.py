@@ -207,7 +207,10 @@ def describe(runs: list[ApproveRun], cwd: Path) -> str:
             f"{'thing' if n == 1 else 'things'} waiting for YOUR decision:"
         )
     elif not n:
-        head = "lawkeep: your coding agent wants to run `lawkeep approve`."
+        head = (
+            "lawkeep: your coding agent wants to run `lawkeep approve`, which records YOUR "
+            "decision on law changes."
+        )
     elif says_yes and says_no:
         head = f"lawkeep: your coding agent wants to record YOUR decision on {n} {things}:"
     elif says_no:
