@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest something lawkeep should do.
+title: "feat: "
+labels: ["feature", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. The roadmap is in [docs/PLAN.md](https://github.com/lawkeep/lawkeep/blob/main/docs/PLAN.md#roadmap);
+        open-ended ideas also fit well in [Discussions → Ideas](https://github.com/lawkeep/lawkeep/discussions/categories/ideas).
+        lawkeep records and shows rather than forcing a team process: features that make stricter
+        enforcement possible are welcome as optional extras, off by default.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should lawkeep do? Example commands or output help a lot.
+    validations:
+      required: true
+  - type: dropdown
+    id: roadmap
+    attributes:
+      label: Which roadmap version does this fit?
+      description: See the Roadmap in docs/PLAN.md. "Not sure" is fine.
+      options:
+        - Not sure
+        - v0.1.x (fix or polish of what exists)
+        - v0.2 Real apps
+        - v0.3 Outside services
+        - v0.4 Race conditions
+        - v0.5 Proofs
+        - v0.6 Other languages
+        - v1.0 Stable
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this myself.

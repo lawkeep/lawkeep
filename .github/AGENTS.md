@@ -6,6 +6,14 @@ search and copy-me templates for users; see `workflows/AGENTS.md`), `pull_reques
 GitHub Actions and `uv.lock`, titled `ci(deps): ...` / `build(deps): ...`). Naming conventions:
 `CONTRIBUTING.md` in the repository root.
 
+Also here: `ISSUE_TEMPLATE/` (issue forms `bug_report.yml` and `feature_request.yml`, which add the
+labels `bug`/`feature` + `needs triage`, and `config.yml`: blank issues off, links to Discussions
+and to private security advisories) and `CODEOWNERS` (`* @abhishek19273`: GitHub asks the
+maintainer to review every PR in this repository; nothing to do with lawkeep's users).
+`ISSUE_TEMPLATE/` has no `AGENTS.md` on purpose: GitHub would offer any `.md` file there as an
+issue template. Labels named in the forms must exist in the repository (GitHub ignores unknown
+ones); the label set is described in `docs/PLAN.md` → Decisions (2026-11-23, repository setup).
+
 - Nothing here runs locally. CI, the lawkeep workflow and the v0.1.0 release ran on GitHub on 2026-11-23.
 - The workflows use the composite action in the repository root (`action.yml`, `uses: ./`).
 - lawkeep checks itself (decided 2026-11-22): `workflows/lawkeep.yml` was installed by

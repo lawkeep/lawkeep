@@ -9,6 +9,20 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   `lawkeep.exitcodes`). Installed by `lawkeep init`, fingerprinted in the root `laws.lock`, so it
   is protected: agents cannot edit it, and a hand edit shows up as an unrecorded law change.
 - `nightly.yml`: deep search on the examples.
+- `dependency-review.yml` (job `dependency review`): on pull requests, fails when a change adds a
+  dependency with a known high-severity vulnerability.
+- `pr-title.yml` (job `pr title`): PR titles must be Conventional Commits with the types from
+  `CONTRIBUTING.md` and a summary that starts lowercase and has no full stop. Change the type list
+  here and in `CONTRIBUTING.md` together.
+- `scorecard.yml`: OpenSSF Scorecard weekly and on pushes to `main`; results go to the Security
+  tab and the public badge. With `publish_results: true` the job may only use the actions
+  Scorecard allows and the workflow may not set top-level `env`/`defaults`.
+- `pages.yml`: builds the docs site (`docs/onboarding.html` as `index.html`, plus project links
+  injected after the sidebar's `<div class="brand">` line; the build stops if that line changes)
+  and deploys it to https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch it.
+  Pages must be set to "GitHub Actions" in the repository settings.
+- The required status checks on `main` (ruleset) use the job names as GitHub shows them: renaming
+  a job in `ci.yml`, `pr-title.yml` or `dependency-review.yml` means updating the ruleset too.
 - `templates/`: workflows for users to copy (GitHub does not run files in sub-folders; see
   `templates/AGENTS.md`). `lawkeep init --ci` installs its own copy from
   `src/lawkeep/adapters/templates/lawkeep-workflow.yml`.
@@ -18,7 +32,8 @@ All three workflows use the local action (`uses: ./`, `lawkeep-spec: ${{ github.
 may only pass inputs that the root `action.yml` defines. `ci.yml` repeats the local commands:
 change it when the test or lint commands change.
 
-None of these have run on GitHub yet; there is no local test for them.
+These run only on GitHub; there is no local test for them (`uv run pre-commit run check-yaml
+--all-files` checks their syntax).
 
 ## release.yml
 

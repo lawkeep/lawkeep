@@ -4,6 +4,18 @@ Thanks for helping. This page lists the conventions every change follows, so the
 releases and the PyPI package stay predictable. New to the codebase? Start with
 [`docs/onboarding.html`](docs/onboarding.html) and [`AGENTS.md`](AGENTS.md).
 
+- **Find something to work on:** issues labelled
+  [`good first issue`](https://github.com/lawkeep/lawkeep/labels/good%20first%20issue) are small
+  and come with steps; [`help wanted`](https://github.com/lawkeep/lawkeep/labels/help%20wanted)
+  ones need someone with the right setup (for example a coding agent we could not run). Say in the
+  issue that you are taking it. Milestones follow the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
+- **Questions and ideas:** [Discussions](https://github.com/lawkeep/lawkeep/discussions). Bugs and
+  concrete features: the issue forms. Security problems: [`SECURITY.md`](SECURITY.md), never a
+  public issue.
+- **Docs site:** the onboarding guide is published at
+  [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/).
+- Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Workflow in one picture
 
 ```
@@ -112,6 +124,23 @@ uv run pyright                 # must report 0 errors
 uv run pytest -q               # about 9 minutes
 uv run lawkeep check           # lawkeep's own laws: ALL LAWS HOLD
 ```
+
+### pre-commit hooks (optional, recommended)
+
+```bash
+uv run pre-commit install         # once per clone
+uv run pre-commit run --all-files # run every hook by hand
+```
+
+`.pre-commit-config.yaml` runs whitespace and end-of-file fixes, YAML/TOML checks, a large-file
+check, a merge-conflict check, ruff (lint and format, on `src/` and `tests/`) and lawkeep's own
+pre-commit check (`uv run lawkeep hook pre-commit`). `pre-commit install` replaces
+`.git/hooks/pre-commit`, which is where `lawkeep init` put that check, so the last hook keeps it
+running: it shows law changes made outside lawkeep and only stops the commit if you set
+`git config lawkeep.precommit block`. The hooks never touch `laws/`, `laws.lock` or
+`examples/*/laws/` (lawkeep fingerprints them) or the planted-bug `*.patch` files.
+`.editorconfig` sets the same basics for your editor (UTF-8, LF, 4 spaces for Python, 2 for
+YAML/JSON/TOML).
 
 Laws in this repository are changed only through lawkeep (`lawkeep propose` / `lawkeep approve`);
 see `AGENTS.md`.

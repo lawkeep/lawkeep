@@ -13,6 +13,11 @@ versions). While lawkeep is 0.x, a minor version may change behaviour.
 - `CONTRIBUTING.md` with the project's naming conventions (branches, Conventional Commits, pull
   requests, versions, tags, releases, changelog), a pull request template, `SECURITY.md` and
   Dependabot updates for GitHub Actions and Python dependencies.
+- Repository setup for contributors: issue forms (bug report, feature request), a Code of Conduct
+  (Contributor Covenant 2.1), `CODEOWNERS`, `.editorconfig`, pre-commit hooks
+  (`.pre-commit-config.yaml`, including lawkeep's own pre-commit check), README badges, and
+  workflows for dependency review, Conventional Commit PR titles, OpenSSF Scorecard and the docs
+  site on GitHub Pages (https://lawkeep.github.io/lawkeep/).
 
 ### Fixed
 

@@ -1,0 +1,88 @@
+name: Bug report
+description: lawkeep did something wrong (a wrong verdict, a crash, a confusing message, a broken adapter).
+title: "bug: "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the README → "Known limits" first: some edges are known.
+        **Security problems** (for example a way for an agent to change a law silently) must not be
+        reported here: use **Security → Report a vulnerability** instead.
+  - type: input
+    id: lawkeep-version
+    attributes:
+      label: lawkeep version
+      description: Output of `lawkeep --version`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output of `python --version`.
+      placeholder: "3.12.7"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows (not supported yet)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Coding agent
+      description: Which coding agent was involved, if any?
+      options:
+        - None (plain CLI or CI)
+        - Claude Code
+        - Codex
+        - Cursor
+        - GitHub Copilot
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      description: The exact command (or MCP tool call), run from which folder.
+      render: shell
+      placeholder: lawkeep check
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Include the full text output and the result code (`echo $?`).
+    validations:
+      required: true
+  - type: textarea
+    id: check-json
+    attributes:
+      label: "`lawkeep check --json` output"
+      description: Remove anything private first. Write "not relevant" if the bug is not about `check`.
+      render: json
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Ideally on a copy of `examples/billing` or a small made-up project. Please do not paste private code.
+      placeholder: |
+        1. cp -r examples/billing /tmp/billing && cd /tmp/billing
+        2. ...

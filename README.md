@@ -1,5 +1,13 @@
 # lawkeep
 
+[![PyPI](https://img.shields.io/pypi/v/lawkeep)](https://pypi.org/project/lawkeep/)
+[![Python versions](https://img.shields.io/pypi/pyversions/lawkeep)](https://pypi.org/project/lawkeep/)
+[![CI](https://github.com/lawkeep/lawkeep/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lawkeep/lawkeep/actions/workflows/ci.yml?query=branch%3Amain)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Typed: pyright strict](https://img.shields.io/badge/typed-pyright%20strict-blue)](https://github.com/microsoft/pyright)
+[![Downloads](https://img.shields.io/pypi/dm/lawkeep)](https://pypi.org/project/lawkeep/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/lawkeep/lawkeep/badge)](https://securityscorecards.dev/viewer/?uri=github.com/lawkeep/lawkeep)
+
 **Only review what your laws don't protect.**
 
 lawkeep is an open-source layer for AI-assisted coding. You decide on a short list of *laws*:
@@ -237,8 +245,12 @@ roadmap in [docs/PLAN.md](docs/PLAN.md).
 
 ## Working on lawkeep itself
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: branch names, Conventional Commits, pull
-requests, versions, tags and releases. Security issues: see [`SECURITY.md`](SECURITY.md).
+Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: branch names,
+Conventional Commits, pull requests, versions, tags and releases. Good places to start are the
+[good first issues](https://github.com/lawkeep/lawkeep/labels/good%20first%20issue); questions go
+to [Discussions](https://github.com/lawkeep/lawkeep/discussions). Security issues: see
+[`SECURITY.md`](SECURITY.md). Everyone taking part follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ```bash
 uv sync --all-extras                                          # install lawkeep + dev tools
@@ -258,6 +270,8 @@ uv run lawkeep check                                          # lawkeep checks i
 
 ## Learn more
 
+- **Docs site: [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/)** (the onboarding
+  guide: concepts, every command, architecture).
 - [docs/PLAN.md](docs/PLAN.md): design, principles, roadmap, risks, decisions.
 - [docs/guide/](docs/guide/): guides for non-technical users and developers, and law recipes.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): module contract for contributors.

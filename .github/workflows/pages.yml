@@ -1,0 +1,72 @@
+# Publishes the docs site to GitHub Pages: docs/onboarding.html as the home page, with links to
+# the guides, README, CONTRIBUTING and PyPI added to its sidebar at build time.
+# URL: https://lawkeep.github.io/lawkeep/
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/onboarding.html
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build docs site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build the site
+        run: |
+          mkdir -p _site
+          python3 - <<'PY'
+          from pathlib import Path
+
+          repo = "https://github.com/lawkeep/lawkeep"
+          page = Path("docs/onboarding.html").read_text(encoding="utf-8")
+          marker = '<div class="brand">lawkeep onboarding</div>'
+          assert page.count(marker) == 1, "sidebar marker not found in docs/onboarding.html"
+          links = [
+              ("User guides", f"{repo}/tree/main/docs/guide"),
+              ("README", f"{repo}#readme"),
+              ("Contributing", f"{repo}/blob/main/CONTRIBUTING.md"),
+              ("Good first issues", f"{repo}/labels/good%20first%20issue"),
+              ("Discussions", f"{repo}/discussions"),
+              ("PyPI", "https://pypi.org/project/lawkeep/"),
+          ]
+          items = "".join(f'<li><a href="{url}">{text}</a></li>' for text, url in links)
+          extra = (
+              f'<ol aria-label="Project links" style="margin-bottom:14px;padding-bottom:10px;'
+              f'border-bottom:1px solid var(--border)">{items}</ol>'
+          )
+          Path("_site/index.html").write_text(page.replace(marker, marker + extra), encoding="utf-8")
+          PY
+          cp _site/index.html _site/onboarding.html
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    name: deploy docs site
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
