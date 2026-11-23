@@ -132,6 +132,9 @@ uv run pre-commit install         # once per clone
 uv run pre-commit run --all-files # run every hook by hand
 ```
 
+`pre-commit` is in the dev group for Python 3.11 and newer (the repository's default is 3.12;
+on 3.10 one of its dependencies has an unfixed advisory).
+
 `.pre-commit-config.yaml` runs whitespace and end-of-file fixes, YAML/TOML checks, a large-file
 check, a merge-conflict check, ruff (lint and format, on `src/` and `tests/`) and lawkeep's own
 pre-commit check (`uv run lawkeep hook pre-commit`). `pre-commit install` replaces
