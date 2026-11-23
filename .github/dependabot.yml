@@ -9,6 +9,7 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    labels: ["ci"]
     groups:
       actions:
         patterns: ["*"]
@@ -20,6 +21,7 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    labels: ["build"]
     groups:
       python:
         patterns: ["*"]

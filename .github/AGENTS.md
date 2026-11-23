@@ -3,7 +3,9 @@
 GitHub settings for the lawkeep repository itself: `workflows/` (CI, release, the nightly deep
 search and copy-me templates for users; see `workflows/AGENTS.md`), `pull_request_template.md`
 (PR checklist; PR titles follow Conventional Commits) and `dependabot.yml` (weekly update PRs for
-GitHub Actions and `uv.lock`, titled `ci(deps): ...` / `build(deps): ...`). Naming conventions:
+GitHub Actions and `uv.lock`, titled `ci(deps): ...` / `build(deps): ...`, labelled `ci` / `build`;
+Gotcha: an Actions update also edits the protected `workflows/lawkeep.yml`, which makes the
+`laws` check fail until a person records that change through lawkeep). Naming conventions:
 `CONTRIBUTING.md` in the repository root.
 
 Also here: `ISSUE_TEMPLATE/` (issue forms `bug_report.yml` and `feature_request.yml`, which add the
