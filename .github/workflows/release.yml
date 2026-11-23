@@ -9,8 +9,10 @@
 #      environment "pypi".
 #   3. "github-release" creates a GitHub release for the tag with the built files attached.
 #
-# To release: bump __version__ in src/lawkeep/__init__.py, add a CHANGELOG.md entry, commit,
-# then `git tag v<version> && git push origin v<version>`.
+# To release: follow CONTRIBUTING.md → "Versions, tags and releases" (bump __version__, move the
+# CHANGELOG.md "Unreleased" section to the new version, merge, then
+# `git tag -a v<version> -m "lawkeep <version>" && git push origin v<version>`).
+# Release notes are this version's section of CHANGELOG.md; a, b and rc versions are pre-releases.
 name: release
 
 on:
@@ -97,4 +99,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* --title "lawkeep $GITHUB_REF_NAME" --notes "See CHANGELOG.md for what changed."
+          # Release notes = this version's section of CHANGELOG.md (Keep a Changelog format).
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on && /^\[[^]]+\]: / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "See CHANGELOG.md for what changed." > notes.md; fi
+          prerelease=""
+          case "$version" in *a*|*b*|*rc*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --title "lawkeep $GITHUB_REF_NAME" --notes-file notes.md --verify-tag $prerelease

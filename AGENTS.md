@@ -72,7 +72,8 @@ switched off (`enableTypeIgnoreComments = false`). For basedpyright in an editor
    - inside the made-up fixture projects `tests/fixtures/<area>/<project>/` (tests copy them, and an `AGENTS.md` changes what `lawkeep init` finds). Describe them in `tests/fixtures/<area>/AGENTS.md`;
    - the repository's own lawkeep setup (`laws/`, `.claude/`): lawkeep checks itself (see "Current state");
    - generated folders (`.venv`, `__pycache__`, `.hypothesis`, caches).
-8. **Keep this file and the plan current.** When a decision is made or the state changes, update `docs/PLAN.md` (including "Decisions") and the "Current state" section above.
+8. **Follow the naming conventions in [`CONTRIBUTING.md`](CONTRIBUTING.md).** Branches `<type>/<short-description>` off `main` (never commit to `main` directly), Conventional Commits for commits and PR titles, squash-merge, SemVer/PEP 440 versions, annotated `v<version>` tags, Keep a Changelog entries under `Unreleased` in the same change.
+9. **Keep this file and the plan current.** When a decision is made or the state changes, update `docs/PLAN.md` (including "Decisions") and the "Current state" section above.
 
 ## Local machine setup
 

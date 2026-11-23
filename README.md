@@ -237,9 +237,12 @@ roadmap in [docs/PLAN.md](docs/PLAN.md).
 
 ## Working on lawkeep itself
 
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: branch names, Conventional Commits, pull
+requests, versions, tags and releases. Security issues: see [`SECURITY.md`](SECURITY.md).
+
 ```bash
 uv sync --all-extras                                          # install lawkeep + dev tools
-uv run pytest -q                                              # the whole suite (~6-7 minutes)
+uv run pytest -q                                              # the whole suite (~9 minutes)
 uv run ruff check src tests && uv run ruff format --check src tests   # lint and format
 uv run pyright                                                # type check
 uv run lawkeep check                                          # lawkeep checks its own laws
