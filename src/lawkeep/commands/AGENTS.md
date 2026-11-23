@@ -26,7 +26,10 @@ Gotchas: `approve` is the only command that records a person's yes; `propose` re
 in place: `draft_edits` puts them back and parks them as waiting proposals (shared parking code:
 `propose.park_proposal`; `apply_proposal` writes `whole_file` proposals byte for byte), and
 `approve --yes` without ids never decides them (`approve._is_weakening`) nor unconfirmed
-approvals, and the batch never takes anything `_is_weakening`, unrecorded or unconfirmed; agent hooks (`hook pre-tool-use`) always exit 0 because
+approvals, and the batch never takes anything `_is_weakening`, unrecorded or unconfirmed.
+`approve.select` is the one place that picks what a run decides; the guard's approve question
+(`adapters/approve_preview.py`) reuses it with `approve.collect`, so keep both free of
+writes and project code. Agent hooks (`hook pre-tool-use`) always exit 0 because
 exit 2 means "block" to agents.
 
 Tests: `tests/test_gate_check_cli.py`, `test_report_cli.py`, `test_lifecycle_flow.py`,

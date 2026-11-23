@@ -41,26 +41,34 @@ NAME = "codex"
 ROOT_EXPR = "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 EDIT_MATCHER = "apply_patch|Edit|Write|Bash"
 
-RULES = """\
-# lawkeep: `lawkeep approve` records a person's decision on a law change, so Codex asks the
-# person before running it. Added by `lawkeep init`.
+#: Shown to the person in Codex's prompt (plain words; Codex hooks cannot list the items).
+JUSTIFICATION_TEXT = (
+    "lawkeep: your coding agent wants to record YOUR approval of a law change. Say yes only "
+    "if you asked for this and have read the law. Not sure? Say no - you can approve later "
+    "yourself with lawkeep approve."
+)
+JUSTIFICATION = '"' + JUSTIFICATION_TEXT + '"'
+
+RULES = f"""\
+# lawkeep: `lawkeep approve` records YOUR decision on a law change, so Codex asks you
+# before running it. Added by `lawkeep init`.
 # Format: https://learn.chatgpt.com/docs/agent-configuration/rules
 prefix_rule(
     pattern = ["lawkeep", "approve"],
     decision = "prompt",
-    justification = "lawkeep approve records a person's decision on a law change",
+    justification = {JUSTIFICATION},
     match = ["lawkeep approve h-1a2b3c4d --yes"],
     not_match = ["lawkeep check"],
 )
 prefix_rule(
     pattern = ["uv", "run", "lawkeep", "approve"],
     decision = "prompt",
-    justification = "lawkeep approve records a person's decision on a law change",
+    justification = {JUSTIFICATION},
 )
 prefix_rule(
     pattern = [["python", "python3"], "-m", "lawkeep", "approve"],
     decision = "prompt",
-    justification = "lawkeep approve records a person's decision on a law change",
+    justification = {JUSTIFICATION},
 )
 """
 

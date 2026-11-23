@@ -1356,6 +1356,28 @@ def _ask_each(
         )
 
 
+def select(
+    items: list[Item], root: Path, ids: list[str], *, yes: bool, accept_unrecorded: bool
+) -> tuple[list[Item], list[Item], list[str]]:
+    """What one ``lawkeep approve`` run decides: ``(decided, held back, unmatched ids)``.
+
+    With ids: the items they name. ``--accept-unrecorded`` without ids: only law files changed
+    outside lawkeep. ``--yes`` without ids: everything except weakening proposals and changes
+    by the drafting AI (held back: those are approved one at a time, by id). Also used by the
+    guard to tell the person what an agent's ``lawkeep approve`` would decide."""
+    if ids:
+        selected = [it for it in items if any(it.matches(t, root) for t in ids)]
+        unmatched = [t for t in ids if not any(it.matches(t, root) for it in items)]
+        return selected, [], unmatched
+    if accept_unrecorded:
+        # "accept that hand edit" must not also approve drafts or weakening proposals
+        return [it for it in items if it.kind == "unrecorded"], [], []
+    if yes:
+        held_back = [it for it in items if _is_weakening(it)]
+        return [it for it in items if not _is_weakening(it)], held_back, []
+    return items, [], []
+
+
 def run(args: argparse.Namespace) -> int:
     root = paths.require_root(args.root)
     cfg = config.load_config(root)
@@ -1366,24 +1388,18 @@ def run(args: argparse.Namespace) -> int:
     listing = not args.ids and not (args.yes or args.no) and not args.accept_unrecorded
     items = collect(root, args.accept_unrecorded or listing, unconfirmed=listing or bool(args.ids))
     problems: list[str] = []
-    held_back: list[Item] = []
-    if args.ids:
-        selected = [it for it in items if any(it.matches(t, root) for t in args.ids)]
-        unmatched = [t for t in args.ids if not any(it.matches(t, root) for it in items)]
-        for t in unmatched:
-            problems.append(f"Nothing waiting matches {t!r}.")
-        items = selected
-    elif args.accept_unrecorded:
-        # "accept that hand edit" must not also approve drafts or weakening proposals
-        items = [it for it in items if it.kind == "unrecorded"]
+    items, held_back, unmatched = select(
+        items, root, args.ids, yes=bool(args.yes), accept_unrecorded=bool(args.accept_unrecorded)
+    )
+    for t in unmatched:
+        problems.append(f"Nothing waiting matches {t!r}.")
+    if not args.ids and args.accept_unrecorded:
         if not items:
             notes.append(
                 "No law files changed outside lawkeep. (--accept-unrecorded without ids decides "
                 "only such changes; drafts and proposals are approved by their id.)"
             )
-    elif args.yes:
-        held_back = [it for it in items if _is_weakening(it)]
-        items = [it for it in items if not _is_weakening(it)]
+    elif not args.ids and args.yes:
         if held_back and not items:
             problems.append(
                 "Weakening proposals, and changes the drafting AI made to approved files, are "

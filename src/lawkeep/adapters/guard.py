@@ -3,8 +3,11 @@
 Used by ``lawkeep hook pre-tool-use`` for every agent (Claude Code, Codex, Cursor, Copilot).
 No project code runs here and nothing is written: it only reads the hook payload (and, for
 shell commands, the scripts and patch files a command names) and answers "allow", "deny"
-(with a plain-English message saying to use ``lawkeep propose``) or "ask" (for
-``lawkeep approve``, so the person's yes comes from the agent's own permission prompt).
+(with a plain-English message saying to use ``lawkeep propose``) or "ask" (when the command
+actually *runs* ``lawkeep approve``, so the person's yes comes from the agent's own permission
+prompt; the question names what would be approved, see ``approve_preview.py``). Text that only
+mentions ``lawkeep approve`` (a here-document, a commit message, a string in code) is not asked
+about.
 
 Protected paths (relative to the project root):
 
@@ -266,13 +269,19 @@ def lawkeep_subcommand(words: list[str]) -> str | None:
     return None
 
 
+def _runs_approve(words: list[str]) -> bool:
+    """A simple command that is ``lawkeep approve`` (not ``lawkeep approve --help``)."""
+    return lawkeep_subcommand(words) == "approve" and not ({"--help", "-h"} & set(words))
+
+
 def is_approval_command(command: str) -> bool:
-    """True when the shell command runs ``lawkeep approve`` (a person's decision), also when
+    """True when the shell command *runs* ``lawkeep approve`` (a person's decision), also when
     it is wrapped (``uv run``, ``sh -c``, ``xargs``, ``python -c "...cli.main(['approve'])"``,
     ``subprocess``) or writes history entries through lawkeep's Python API
-    (``history.record_change``)."""
+    (``history.record_change``). Text that only mentions it (``echo "lawkeep approve"``, a
+    here-document body, a commit message) does not count, nor does ``--help``."""
     return writes.analyse(command, None).approval or any(
-        lawkeep_subcommand(seg) == "approve" for seg in segments(command)
+        _runs_approve(seg) for seg in segments(command)
     )
 
 
@@ -309,10 +318,23 @@ def deny_message(rels: list[str]) -> str:
     )
 
 
+#: The question when lawkeep cannot work out what would be approved (see ``approve_message``).
 APPROVE_MESSAGE = (
-    "lawkeep: `lawkeep approve` records a person's yes or no on a law change. Only allow it "
-    "if you (the person) asked for this approval and have read the law's sentence and examples."
+    "lawkeep: your coding agent wants to record YOUR approval of a law change "
+    "(`lawkeep approve`). Say yes only if you asked for this and have read the law and its "
+    "examples. Not sure? Say no — nothing is lost; you can approve later yourself with "
+    "`lawkeep approve`."
 )
+
+
+def approve_message(found: writes.Findings, cwd: Path) -> str:
+    """The question for the person: what the command's ``lawkeep approve`` would decide."""
+    try:
+        from lawkeep.adapters import approve_preview
+
+        return approve_preview.describe(found.approve_runs, cwd)
+    except Exception:  # pragma: no cover - defensive: the question must always be asked
+        return APPROVE_MESSAGE
 
 
 def unsure_message(reasons: list[str], mentions: list[str]) -> str:
@@ -374,7 +396,8 @@ def decide(payload: dict[str, Any]) -> Decision:
       cannot see (``eval``, paths built at run time, decoded scripts ...) is denied only when
       it plausibly touches the laws: the command names a protected path, or runs decoded
       code; otherwise it is allowed (``lawkeep check`` still flags anything that changed).
-    - ``lawkeep approve`` (also wrapped) gets "ask": the person confirms it.
+    - a command that runs ``lawkeep approve`` (also wrapped) gets "ask": the person confirms
+      it, and the question lists what it would decide. Mentions in text are not asked about.
     """
     try:
         call = parse_payload(as_dict(payload))  # hook input is untrusted JSON
@@ -393,7 +416,7 @@ def decide(payload: dict[str, Any]) -> Decision:
             found = writes.Findings(
                 unsure=["the command could not be analysed"],
                 mentions=writes.bare_mentions(call.command),
-                approval=bool(re.search(r"\blawkeep\b.*\bapprove\b", call.command)),
+                approval=any(_runs_approve(seg) for seg in segments(call.command)),
             )
         more, more_root = _hits(found.targets, cwd)
         for h in more:
@@ -416,5 +439,5 @@ def decide(payload: dict[str, Any]) -> Decision:
             str(root_path) if root_path else None,
         )
     if found is not None and found.approval:
-        return Decision("ask", APPROVE_MESSAGE)
+        return Decision("ask", approve_message(found, cwd))
     return Decision()

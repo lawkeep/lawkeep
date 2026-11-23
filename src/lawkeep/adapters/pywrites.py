@@ -14,7 +14,12 @@ path arguments when the code shows them:
   ``shutil.move`` (both), ``shutil.rmtree``; ``fileinput.input(..., inplace=True)``;
 - commands it starts (``subprocess.run``/``call``/``check_call``/``check_output``/``Popen``,
   ``os.system``, ``os.popen``): returned as shell text for ``writes.py`` to analyse;
-- ``exec``/``eval``/``compile`` of a fixed string: analysed as Python too.
+- ``exec``/``eval``/``compile`` of a fixed string: analysed as Python too;
+- lawkeep's own entry points: ``lawkeep.cli.main([...])`` with a fixed list is returned as the
+  shell command ``lawkeep ...``; a call to ``record_change`` (lawkeep's history API), a
+  ``main(...)`` whose arguments are only known at run time, or a command list such as
+  ``["lawkeep", "approve", some_id]`` with run-time values sets ``approval_unknown``. Strings
+  that merely *mention* ``lawkeep approve`` (``print("run lawkeep approve")``) never count.
 
 Path values it can follow: string literals, f-strings of literals, ``+`` and ``/`` joins,
 ``Path(...)``/``os.path.join(...)``/``str(...)``, ``.resolve()``/``.absolute()``/
@@ -63,6 +68,11 @@ class PyFindings:
     unsure: list[str] = field(default_factory=list[str])
     shell: list[str | None] = field(default_factory=list["str | None"])  # None: built at run time
     mentions: list[str] = field(default_factory=list[str])
+    #: runs ``lawkeep approve`` (or records a decision) with arguments only known at run time
+    approval_unknown: bool = False
+
+
+_LAWKEEP_MAINS = {"lawkeep.cli.main", "lawkeep.__main__.main", "lawkeep.main"}
 
 
 class _Analyser:
@@ -312,6 +322,19 @@ class _Analyser:
                 cmd = args[0] if args else kw.get("args")
                 self.runner(cmd)
                 continue
+            if name.rsplit(".", 1)[-1] == "record_change":
+                self.out.approval_unknown = True  # lawkeep's history API: a recorded decision
+                continue
+            if name in _LAWKEEP_MAINS:
+                argv = args[0] if args else kw.get("argv")
+                if isinstance(argv, (ast.List, ast.Tuple)):
+                    vals = [self.value(e) for e in argv.elts]
+                    if all(v is not None and len(v) == 1 for v in vals):
+                        self.out.shell.append(shlex.join(["lawkeep", *(v[0] for v in vals if v)]))
+                        continue
+                if argv is not None and self._mentions_approve(argv):
+                    self.out.approval_unknown = True
+                continue
             if (
                 name.startswith("os.exec")
                 or name.startswith("os.spawn")
@@ -357,12 +380,19 @@ class _Analyser:
                     self.target(receiver, "moves")
                     self.target(args[0] if args else None, "moves")
 
+    def _mentions_approve(self, node: ast.AST) -> bool:
+        """An element of a list built in the code is exactly ``"approve"``."""
+        return any(isinstance(n, ast.Constant) and n.value == "approve" for n in ast.walk(node))
+
     def runner(self, cmd: ast.AST | None) -> None:
         if cmd is None:
             return
         if isinstance(cmd, (ast.List, ast.Tuple)):
             vals = [self.value(e) for e in cmd.elts]
             if any(v is None or len(v) != 1 for v in vals):
+                words = [v[0] if v and len(v) == 1 else None for v in vals]
+                if _runs_lawkeep_approve(words):
+                    self.out.approval_unknown = True
                 self.out.shell.append(None)
             else:
                 self.out.shell.append(shlex.join(v[0] for v in vals if v))
@@ -372,6 +402,15 @@ class _Analyser:
             self.out.shell.append(None)
         else:
             self.out.shell.extend(vals)
+
+
+def _runs_lawkeep_approve(words: list[str | None]) -> bool:
+    """A command list (some words only known at run time) that starts lawkeep and then names
+    ``approve``: ``["lawkeep", "approve", x]``, ``[sys.executable, "-m", "lawkeep", ...]``."""
+    for i, w in enumerate(words):
+        if w is not None and os.path.basename(w) == "lawkeep":
+            return "approve" in words[i + 1 :]
+    return False
 
 
 def _join(a: str, b: str) -> str:

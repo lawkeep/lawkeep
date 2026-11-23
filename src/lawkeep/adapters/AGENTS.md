@@ -8,8 +8,11 @@ Thin per-agent adapters on one shared base, installed by `lawkeep init`.
 - `guard.py`: one decision function (`decide`) for every agent's pre-tool-use hook (Claude Code,
   Codex, Cursor, Copilot payloads all go through it). It denies direct writes to `laws/` (except
   `laws/drafts/` outside `proposals/`), `laws.lock`, `lawkeep.toml` and
-  `.github/workflows/lawkeep.yml`, and answers "ask" for `lawkeep approve` (also wrapped in
-  `uv run`, `sh -c`, `xargs`, Python). Edit tools: the target path decides (relative to the call's
+  `.github/workflows/lawkeep.yml`, and answers "ask" when a command actually *runs*
+  `lawkeep approve` (also wrapped in `uv run`, `python -m`, `sh -c`, `xargs`, `env`/`sudo`/
+  `timeout`, Python `subprocess`/`cli.main`/`history.record_change`). Text that only mentions
+  it (here-document bodies, `echo`, `git commit -m`, strings in code, files being written)
+  is never asked about, nor is `lawkeep approve --help`. Edit tools: the target path decides (relative to the call's
   folder, `..` removed, symlinks followed). A drafting session (`LAWKEEP_DRAFTING=1`, set by
   `agent_launcher`) may write `laws/strategies.py`.
 - Shell commands are judged by what they **write to**, never by what they mention:
@@ -43,6 +46,15 @@ Thin per-agent adapters on one shared base, installed by `lawkeep init`.
     (`git checkout <branch>` / `.`, `git stash pop`, `git reset --hard`, `git pull`), archive
     and patch contents it cannot read, symlinks created earlier in the same command, `case`
     patterns, and deliberate disguise beyond these forms.
+- `approve_preview.py`: the "ask" question for the person. It parses the `lawkeep approve`
+  arguments (`writes.ApproveRun`) with approve's own parser, lists what waits with
+  `approve.collect` and picks what the run decides with `approve.select` (the real command's
+  selection), then writes one plain line per item ("Loosen “…” → “…” (looser: protects less)",
+  "Add new law “…”", "Accept a hand edit to laws/x.py", "REJECT: …" for `--no`), at most 5
+  lines plus "…and N more". Arguments only known at run time or an unknown id say "lawkeep
+  could not tell which law change this is — say no unless you are sure". No project code runs;
+  it never raises (the plain `guard.APPROVE_MESSAGE` is the fallback). Codex hooks cannot ask,
+  so Codex shows `codex.JUSTIFICATION_TEXT` from its rules file instead.
 - `claude_code.py`, `codex.py`, `cursor.py`, `copilot.py`: each agent's hook, MCP and instruction
   files. Cursor's rule and Copilot's instructions are the AGENTS.md snippet, so they carry the
   "When no person is there" rules too; the session-start text (`commands/hook.py`) adds them

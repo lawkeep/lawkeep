@@ -16,6 +16,13 @@ versions). While lawkeep is 0.x, a minor version may change behaviour.
 
 ### Fixed
 
+- Guard: the "confirm `lawkeep approve`" question now appears only when a command actually runs
+  `lawkeep approve` (also through `uv run`, `python -m lawkeep`, `bash -c`, `xargs` or Python's
+  `subprocess`), not when the words only appear in text such as a here-document, a commit
+  message, `echo`, or a string in Python code. `lawkeep approve --help` is no longer asked about.
+- Guard: the question is written for the person and says what would be decided, one line per
+  item (for example "Loosen “…” → “…” (looser: protects less)", "Add new law “…”", "REJECT: …"),
+  or says plainly when lawkeep cannot tell. Codex's rules-file prompt uses the same plain words.
 - CI: the planted-bug step now captures the gate's expected exit code under `bash -e`.
 
 ## [0.1.0] - 2026-11-23

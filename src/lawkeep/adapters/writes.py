@@ -16,8 +16,11 @@ create, change or delete files. The result lists:
   plausibly touches the laws;
 - ``forced``: decoded code is run (``base64 -d | sh``): hidden on purpose, treated as
   plausible whatever it mentions;
-- ``approval``: the command runs ``lawkeep approve`` (also through ``uv run``, ``sh -c``,
-  ``xargs``, ``python -c "subprocess.run([...])"`` or lawkeep's Python API).
+- ``approval``: the command *runs* ``lawkeep approve`` (also through ``uv run``, ``sh -c``,
+  ``xargs``, ``python -c "subprocess.run([...])"`` or lawkeep's Python API), and
+  ``approve_runs`` says with which arguments, where known. Text that only *mentions*
+  ``lawkeep approve`` (a here-document body, an ``echo``/``git commit -m`` message, a string
+  in Python code, a file being written) never counts; neither does ``lawkeep approve --help``.
 
 What it sees (writes): output redirections (``>``, ``>>``, ``>|``, ``<>``, ``&>``, ``&>>``,
 ``>&file``), ``tee``, ``rm``/``unlink``/``rmdir``/``shred``, ``touch``, ``truncate``,
@@ -63,6 +66,18 @@ PROTECTED_NAMES = ("laws.lock", "lawkeep.toml", "lawkeep.yml")
 
 
 @dataclass
+class ApproveRun:
+    """One ``lawkeep approve`` the command runs."""
+
+    #: the words after ``approve`` (``["h-1", "--yes"]``); None when only known at run time
+    args: list[str] | None
+    #: the folder it runs in, as far as the command shows it
+    cwd: str | None = None
+    #: ``--root`` given before ``approve`` (``lawkeep --root x approve``)
+    root: str | None = None
+
+
+@dataclass
 class Findings:
     targets: list[str] = field(default_factory=list[str])
     recursive: list[str] = field(default_factory=list[str])
@@ -70,6 +85,7 @@ class Findings:
     mentions: list[str] = field(default_factory=list[str])
     forced: bool = False
     approval: bool = False
+    approve_runs: list[ApproveRun] = field(default_factory=list["ApproveRun"])
     #: files this command writes with known text (``cat > x.py <<EOF``), by absolute path
     written: dict[str, str] = field(default_factory=dict[str, str])
 
@@ -80,6 +96,10 @@ class Findings:
     def doubt(self, reason: str) -> None:
         if reason not in self.unsure:
             self.unsure.append(reason)
+
+    def approve(self, run: ApproveRun) -> None:
+        self.approval = True
+        self.approve_runs.append(run)
 
 
 @dataclass
@@ -158,16 +178,23 @@ _WRITEY_CODE = re.compile(
     r"File\.(write|open|delete)|file_put_contents|fopen|FileUtils|Deno\.write|Bun\.write"
 )
 
-_INDIRECT_APPROVAL = re.compile(r"\brecord_change\b|\bhistory\.append\b")
+#: Code in other languages (or Python that does not parse) that *calls* something with
+#: lawkeep approve: ``["lawkeep", "approve"]`` as a command list, ``system("lawkeep approve")``
+#: / ``execSync(`lawkeep approve`)`` with the command as the call's first text, or lawkeep's
+#: Python API ``record_change(``. Prose that merely mentions ``lawkeep approve`` does not match.
+_CODE_APPROVAL = re.compile(
+    r"""['"]lawkeep['"]\s*,\s*['"]approve['"]"""
+    r"""|\b(?:system|exec\w*|spawn\w*|popen|Popen|run|call|check_call|check_output)\s*\(\s*"""
+    r"""['"`](?:[^'"`]*/)?lawkeep\s+(?:--?\w[\w-]*\s+)*approve\b"""
+    r"""|\brecord_change\s*\("""
+)
 
 
 def code_approval(code: str) -> bool:
-    """Inline code that records a person's decision: lawkeep's Python API
-    (``history.record_change``) or ``"approve"`` passed to lawkeep (``cli.main(["approve"])``,
-    ``subprocess.run(["lawkeep", "approve"])``)."""
-    if _INDIRECT_APPROVAL.search(code):
-        return True
-    return bool(re.search(r"\blawkeep\b", code) and re.search(r"""['"]approve['"]""", code))
+    """Code in another language (or Python that does not parse) that runs ``lawkeep approve``
+    or records a decision through lawkeep's Python API. A careful text check: Python that
+    parses is read from its syntax tree instead (``pywrites``)."""
+    return bool(_CODE_APPROVAL.search(code))
 
 
 def patch_targets(text: str) -> list[str]:
@@ -1282,17 +1309,30 @@ class Shell:
 
     def h_lawkeep(self, name: str, args: list[Arg], cmd: sw.Command) -> None:
         # lawkeep itself is the right way to change laws; only `approve` needs the person
-        rest: list[str] = []
-        skip = False
-        for a in args:
-            if skip:
-                skip = False
-            elif a.flag == "--root":
-                skip = True  # its value is a folder, not the subcommand
-            elif a.flag is None:
-                rest.append(a.text)
-        if rest and rest[0] == "approve":
-            self.f.approval = True
+        root: str | None = None
+        i = 0
+        while i < len(args):
+            a = args[i]
+            f = a.flag
+            if f in ("--help", "-h", "--version"):
+                return  # prints text, changes nothing
+            if f == "--root":
+                root = args[i + 1].single if i + 1 < len(args) else None
+                i += 2  # its value is a folder, not the subcommand
+                continue
+            if f is not None and f.startswith("--root="):
+                root = f.partition("=")[2]
+            elif f is None:
+                break
+            i += 1
+        if i >= len(args) or args[i].text != "approve":
+            return
+        tail = args[i + 1 :]
+        if any(a.flag in ("--help", "-h") for a in tail):
+            return  # `lawkeep approve --help` only prints the help text
+        words = [a.single for a in tail]
+        known = None if any(w is None for w in words) else [w for w in words if w is not None]
+        self.f.approve(ApproveRun(known, str(self.cwd) if self.cwd else None, root))
 
     def h_eval(self, name: str, args: list[Arg], cmd: sw.Command) -> None:
         if any(a.values is None or len(a.values) != 1 for a in args):
@@ -1532,8 +1572,6 @@ class Shell:
         inline: bool = False,
         script: str | None = None,
     ) -> None:
-        if code_approval(code):
-            self.f.approval = True
         argv: list[str | None] = [script or "-c"] + [a.single for a in script_args]
         for a in script_args:
             if looks_protected(a.text):
@@ -1543,6 +1581,8 @@ class Shell:
 
             found = pywrites.analyse(code, argv, self.cwd, script)
             if found is not None:
+                if found.approval_unknown:
+                    self.f.approve(ApproveRun(None, str(self.cwd) if self.cwd else None))
                 for m in found.mentions:
                     self.f.mention(m)
                 for t in found.targets:
@@ -1555,8 +1595,11 @@ class Shell:
                     else:
                         self.child().run_text(shell_cmd, "a command started from Python")
                 return
-        # other languages (or Python that does not parse): a quoted protected path in code
-        # that writes files counts as a write to it
+        # other languages (or Python that does not parse): a careful text check for a call that
+        # runs `lawkeep approve`, and a quoted protected path in code that writes files counts
+        # as a write to it
+        if code_approval(code):
+            self.f.approve(ApproveRun(None, str(self.cwd) if self.cwd else None))
         mentions = quoted_mentions(code)
         for m in mentions:
             self.f.mention(m)

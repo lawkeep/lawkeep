@@ -180,7 +180,7 @@ def test_approve_asks_the_person(tmp_path, command):
     root = make_project(tmp_path)
     d = guard.decide(bash(root, command))
     assert d.action == "ask", command
-    assert "person" in d.message
+    assert "YOUR" in d.message
 
 
 def test_codex_apply_patch(tmp_path):
