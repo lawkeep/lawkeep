@@ -180,6 +180,17 @@ def test_law_filter(tmp_path, capsys):
     assert code == 0 and [x["law_id"] for x in data["laws"]] == ["refunds.fee_example"]
 
 
+def test_unknown_law_id_suggests_a_close_match(tmp_path, capsys):
+    root = make_project(tmp_path)
+    code, data = check(root, capsys, "--law", "refunds.refund_is_caped")
+    assert code == 3 and data["exit_code"] == 3
+    assert data["kind"] == "check" and "hint" in data
+    assert "Did you mean refunds.refund_is_capped?" in data["hint"]
+
+    code, data = check(root, capsys, "--law", "not_a_law_at_all")
+    assert code == 3 and "Did you mean" not in data["hint"]
+
+
 def test_deep_profile(tmp_path, capsys):
     root = make_project(tmp_path)
     code, data = check(root, capsys, "--profile", "deep")

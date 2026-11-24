@@ -19,6 +19,7 @@ lawkeep, pytest or Hypothesis (``integrity.scan_source``); see the README's "Kno
 from __future__ import annotations
 
 import dataclasses
+import difflib
 import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -216,10 +217,15 @@ def run_laws(
         known = {i.law_id for i in static.laws}
         unknown = sorted(wanted - known)
         if unknown:
+            hints = ["Check the spelling (`lawkeep check` with no --law runs every law)."]
+            for name in unknown:
+                guess = difflib.get_close_matches(name, sorted(known), n=1)
+                if guess:
+                    hints.append(f"Did you mean {guess[0]}?")
             raise SetupError(
                 f"No law has the id(s) {', '.join(unknown)}, so nothing was checked. Known "
                 f"laws: {', '.join(sorted(known)) or 'none'}.",
-                hint="Check the spelling (`lawkeep check` with no --law runs every law).",
+                hint=" ".join(hints),
             )
     files = law_files(root, include_drafts=include_drafts)
     if wanted is not None:

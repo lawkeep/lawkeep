@@ -42,6 +42,7 @@ versions). While lawkeep is 0.x, a minor version may change behaviour.
 
 ### Changed
 
+- `check --law` now suggests the closest law id when an id is mistyped.
 - CI on pull requests runs only what the change touches: a first job (`changes`) lists the
   changed files; the tests (Python 3.10, 3.12, 3.13), both example projects through the gate and
   the action self-test run only when code changed, the `docs site` build only when the docs (or a

@@ -21,7 +21,8 @@ The lawkeep Python package (v0.1). `docs/ARCHITECTURE.md` is the code contract; 
   `LAWKEEP_*` except `LAWKEEP_ROOT`, sets `sys.path`, calls the mode's handler). Handlers:
   `pytest_plugin.run_check`, `strength/_worker.run`, `_probe_worker.run`.
 - **Gate:** `runner.py` (`check` mode: builds the gate request, turns the one results record
-  into a `RunOutcome`), `pytest_plugin.py` (switched on only by `run_check`, never by the
+  into a `RunOutcome`, and hints at a close match for an unknown `--law` id),
+  `pytest_plugin.py` (switched on only by `run_check`, never by the
   environment; passive otherwise, and it is loaded in every pytest run, this repository's
   included, through the pytest11 entry point; `load_laws_fixtures` is shared with strength),
   `integrity.py` (lock, history and side-door checks; no code runs), `ledger.py` (saved failing examples).
