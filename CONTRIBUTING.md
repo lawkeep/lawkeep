@@ -2,7 +2,8 @@
 
 Thanks for helping. This page lists the conventions every change follows, so the history,
 releases and the PyPI package stay predictable. New to the codebase? Start with
-[`docs/onboarding.html`](docs/onboarding.html) and [`AGENTS.md`](AGENTS.md).
+the [onboarding guide](https://lawkeep.github.io/lawkeep/contributing/onboarding.html) (source:
+[`docs/onboarding.html`](docs/onboarding.html)) and [`AGENTS.md`](AGENTS.md).
 
 - **Find something to work on:** issues labelled
   [`good first issue`](https://github.com/lawkeep/lawkeep/labels/good%20first%20issue) are small
@@ -12,8 +13,11 @@ releases and the PyPI package stay predictable. New to the codebase? Start with
 - **Questions and ideas:** [Discussions](https://github.com/lawkeep/lawkeep/discussions). Bugs and
   concrete features: the issue forms. Security problems: [`SECURITY.md`](SECURITY.md), never a
   public issue.
-- **Docs site:** the onboarding guide is published at
-  [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/).
+- **Docs website:** the user documentation is at
+  [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/) (source: `docs/site/`, Sphinx +
+  Furo + MyST; build it with `uv sync --group docs && uv run sphinx-build -W --keep-going -b html
+  docs/site _build/site`). The onboarding guide for contributors is at
+  [/contributing/onboarding.html](https://lawkeep.github.io/lawkeep/contributing/onboarding.html).
 - Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Workflow in one picture
@@ -122,7 +126,7 @@ fixed by a new patch version (and, if needed, yanking the bad one on PyPI).
 uv sync --all-extras
 uv run ruff check src tests scripts && uv run ruff format --check src tests scripts
 uv run pyright                 # must report 0 errors
-uv run python scripts/build_llms_docs.py --check   # LLM docs up to date (drop --check to rebuild)
+uv run python scripts/build_llms_docs.py --check   # generated docs up to date (drop --check to rebuild)
 uv run pytest -q               # about 9 minutes
 uv run lawkeep check           # lawkeep's own laws: ALL LAWS HOLD
 ```

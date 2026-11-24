@@ -31,16 +31,27 @@ Rules for coding agents working in a project that uses lawkeep (full text in llm
 ## Docs
 
 - [Full reference for LLMs](https://lawkeep.github.io/lawkeep/llms-full.txt): everything in one Markdown file: concepts, quick start for people and agents, every command with its exact options, result codes, the `--json` schema, file formats, the `@law` API, the rules for agents, MCP tools, the GitHub Action, known limits
-- [Onboarding guide](https://lawkeep.github.io/lawkeep/index.md): the docs site's home page as Markdown: concepts with a running example, every command, architecture, repository tour, data formats, safety model, glossary
-- [Developer guide](https://lawkeep.github.io/lawkeep/guide/developer.md): commands, `lawkeep.toml`, files on disk, how `check` runs, permissions and directions, long runs without a person, writing laws, CI
-- [Using lawkeep by talking to your coding agent](https://lawkeep.github.io/lawkeep/guide/non-technical.md): a week with lawkeep without typing commands or reading code
-- [Law recipes](https://lawkeep.github.io/lawkeep/guide/recipes.md): patterns that make laws strong, and traps to avoid
+- [Home](https://lawkeep.github.io/lawkeep/index.md): what lawkeep is, the problem, the promise, a 30-second example, install, status
+- [Getting started](https://lawkeep.github.io/lawkeep/getting-started.md): install, `lawkeep init`, a first law (through your agent or `lawkeep draft`), `lawkeep approve`, `lawkeep check`, what the output means
+- [Concepts](https://lawkeep.github.io/lawkeep/concepts/index.md): [laws](https://lawkeep.github.io/lawkeep/concepts/laws.md), [drafts and approval](https://lawkeep.github.io/lawkeep/concepts/drafts-and-approval.md), [permissions by direction](https://lawkeep.github.io/lawkeep/concepts/directions.md), [law history and lock](https://lawkeep.github.io/lawkeep/concepts/history-and-lock.md), [the gate and result codes](https://lawkeep.github.io/lawkeep/concepts/gate.md), [law strength](https://lawkeep.github.io/lawkeep/concepts/strength.md), [protection report](https://lawkeep.github.io/lawkeep/concepts/protection.md), [waiting list and person present](https://lawkeep.github.io/lawkeep/concepts/waiting-list.md)
+- [Using lawkeep by talking to your agent](https://lawkeep.github.io/lawkeep/guides/talking-to-your-agent.md): a week with lawkeep without typing commands or reading code
+- [Developer daily workflow](https://lawkeep.github.io/lawkeep/guides/developer-workflow.md): check, report, draft, strength, useful options, the pre-commit hook
+- [CI and the GitHub Action](https://lawkeep.github.io/lawkeep/guides/ci.md): the pull-request comment, failing the job only if you opt in, nightly deep search
+- [Long runs without a person](https://lawkeep.github.io/lawkeep/guides/long-runs.md): park and keep going, `person_present`, one waiting list
+- [Changing a law](https://lawkeep.github.io/lawkeep/guides/changing-a-law.md): `lawkeep propose`, directions, deleting a law
+- [Handling an unrecorded law change](https://lawkeep.github.io/lawkeep/guides/unrecorded-changes.md): put it back or accept it
+- [AI tools](https://lawkeep.github.io/lawkeep/agents/index.md): what `lawkeep init --agent` sets up for [Claude Code](https://lawkeep.github.io/lawkeep/agents/claude-code.md), [Codex](https://lawkeep.github.io/lawkeep/agents/codex.md), [Cursor](https://lawkeep.github.io/lawkeep/agents/cursor.md) and [GitHub Copilot](https://lawkeep.github.io/lawkeep/agents/copilot.md), what is verified, and the [MCP server](https://lawkeep.github.io/lawkeep/agents/mcp.md)
+- [Writing good laws](https://lawkeep.github.io/lawkeep/writing-laws/index.md): `@law`, `inputs=`, input generators; [recipes](https://lawkeep.github.io/lawkeep/writing-laws/recipes.md); [avoiding weak laws](https://lawkeep.github.io/lawkeep/writing-laws/weak-laws.md)
+- [Commands](https://lawkeep.github.io/lawkeep/reference/commands.md): every command and option, generated from the CLI parsers
+- [Reference](https://lawkeep.github.io/lawkeep/reference/configuration.md): [`lawkeep.toml`](https://lawkeep.github.io/lawkeep/reference/configuration.md), [result codes](https://lawkeep.github.io/lawkeep/reference/result-codes.md), [files and formats](https://lawkeep.github.io/lawkeep/reference/files.md), [JSON output](https://lawkeep.github.io/lawkeep/reference/json.md), [Python API](https://lawkeep.github.io/lawkeep/reference/python-api.md), [GitHub Action inputs and outputs](https://lawkeep.github.io/lawkeep/reference/github-action.md)
+- [FAQ and known limits](https://lawkeep.github.io/lawkeep/faq.md): honest answers and the edges of v0.1
 
 ## Optional
 
+- [Onboarding guide for contributors](https://lawkeep.github.io/lawkeep/contributing/onboarding.md): how lawkeep works inside: every command, architecture, repository tour, data formats, safety model, glossary
+- [Contributing](https://lawkeep.github.io/lawkeep/CONTRIBUTING.md): branch names, Conventional Commits, pull requests, releases
+- [Changelog](https://lawkeep.github.io/lawkeep/CHANGELOG.md): changes per release
 - [README](https://lawkeep.github.io/lawkeep/README.md): project overview, the promise, known limits, quick starts
 - [Architecture](https://lawkeep.github.io/lawkeep/ARCHITECTURE.md): the code contract for contributors: data formats, module signatures, commands, call graph
 - [Plan](https://lawkeep.github.io/lawkeep/PLAN.md): design source of truth: principles, roadmap, risks, decisions, open questions
 - [Output style](https://lawkeep.github.io/lawkeep/OUTPUT-STYLE.md): how every command talks to people (words, layout)
-- [Changelog](https://lawkeep.github.io/lawkeep/CHANGELOG.md): changes per release
-- [Contributing](https://lawkeep.github.io/lawkeep/CONTRIBUTING.md): branch names, Conventional Commits, pull requests, releases

@@ -1,4 +1,4 @@
-# Using lawkeep by talking to your coding agent
+# Using lawkeep by talking to your agent
 
 You do not need to type commands or read code to use lawkeep. You talk to your coding agent
 (Claude Code, Codex, Cursor, Copilot or another), and it runs lawkeep for you. Your job is to
@@ -203,6 +203,18 @@ a saved input is flagged.
 | See what changed | "Which laws changed in this session?" |
 | Find unprotected code | "Which parts of this change are not protected by a law?" |
 | Check the laws themselves | "Are our laws strong enough? Which ones are weak?" |
+
+## When something goes wrong
+
+- **"SOME LAWS FAIL"**: the code does not follow one of your rules. Ask the agent to fix the code,
+  not the law. It gets the exact example that breaks the rule.
+- **"WAITING FOR YOUR DECISION"**: something needs your yes or no. Ask "Show me what is waiting"
+  and decide each item.
+- **"unrecorded law change"**: a law file was changed outside lawkeep. Ask the agent to show you
+  the change, then either put it back or accept it. See
+  [Handling an unrecorded law change](unrecorded-changes.md).
+- **The agent wants to change a law**: it should tell you which law, show the example that fails,
+  and say what it would change. You decide. See [Changing a law](changing-a-law.md).
 
 ## What lawkeep does not do
 

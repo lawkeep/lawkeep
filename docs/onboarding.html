@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lawkeep onboarding guide</title>
-<link rel="alternate" type="text/markdown" href="index.md" title="This guide as Markdown">
-<link rel="describedby" type="text/markdown" href="llms.txt" title="lawkeep docs for LLMs (llms.txt)">
+<link rel="alternate" type="text/markdown" href="onboarding.md" title="This guide as Markdown">
+<link rel="describedby" type="text/markdown" href="../llms.txt" title="lawkeep docs for LLMs (llms.txt)">
 <meta name="description" content="How lawkeep works, from the first idea to the last module: an onboarding guide for new developers, interns and senior engineers alike.">
 <style>
 :root {
@@ -272,8 +272,8 @@ footer { color: var(--muted); font-size: 14px; margin-top: 4em; border-top: 1px 
 <header>
   <h1>lawkeep onboarding guide</h1>
   <p class="lead">Everything a new developer needs to understand lawkeep: what it is for, how each part works, why it is built this way, and where to find the code. You do not need to know anything about this codebase, or about property-based testing, to start.</p>
-  <div class="box note"><span class="t">Status as of 2026-11-22</span>
-  lawkeep v0.1 is <b>built and integrated, but not committed or released</b>. All nine commands exist. Only Python 3.12 on Linux has been tested. The Codex, Cursor and Copilot adapters have never run inside the real agents, and the GitHub Action has never run on GitHub. These gaps are named again where they matter. The design source of truth is <code>docs/PLAN.md</code>. The code contract is <code>docs/ARCHITECTURE.md</code>.</div>
+  <div class="box note"><span class="t">Status as of 2026-11-24</span>
+  lawkeep <b>0.1.0 is released on PyPI (Alpha)</b>. All nine commands exist. CI runs on Python 3.10, 3.12 and 3.13 on Linux; macOS was never tested and Windows is not supported. The Codex, Cursor and Copilot adapters have never run inside the real agents. This guide is for people working on lawkeep's code; the user documentation is at <a href="https://lawkeep.github.io/lawkeep/">lawkeep.github.io/lawkeep</a>. These gaps are named again where they matter. The design source of truth is <code>docs/PLAN.md</code>. The code contract is <code>docs/ARCHITECTURE.md</code>.</div>
 </header>
 
 <!-- ============================================================ 0 -->
@@ -977,8 +977,8 @@ The example's <code>unprotected_change.patch</code> adds <code>refund_v2()</code
 <tr><td><code>docs/PLAN.md</code></td><td>the design source of truth: principles, concepts, scope, roadmap, risks, <b>Decisions</b> (build choices marked "pending maintainer review"), open questions</td></tr>
 <tr><td><code>docs/ARCHITECTURE.md</code></td><td>the code contract: conventions, data formats, module signatures, commands, call graph</td></tr>
 <tr><td><code>docs/OUTPUT-STYLE.md</code></td><td>how every command talks to people</td></tr>
-<tr><td><code>docs/guide/</code></td><td>user guides: <code>non-technical.md</code> (a week with lawkeep through an agent), <code>developer.md</code>, <code>recipes.md</code> (patterns for strong laws, traps)</td></tr>
-<tr><td><code>docs/onboarding.html</code></td><td>this guide</td></tr>
+<tr><td><code>docs/site/</code></td><td>the public documentation website (Sphinx, Furo, MyST Markdown): getting started, concepts, guides, AI tools, writing laws, reference; published at https://lawkeep.github.io/lawkeep/</td></tr>
+<tr><td><code>docs/onboarding.html</code></td><td>this guide (published at <code>/contributing/onboarding.html</code>)</td></tr>
 <tr><td><code>src/lawkeep/</code></td><td>the package (section 5): foundation modules at the top level, plus <code>commands/</code>, <code>adapters/</code> (with <code>templates/</code>: the AGENTS.md snippet, pre-commit block, starting <code>strategies.py</code>, workflow for <code>init --ci</code>), <code>strength/</code></td></tr>
 <tr><td><code>tests/</code></td><td>782 tests (collected 2026-11-23). Prefixes: <code>test_core_*</code>, <code>test_gate_*</code>, <code>test_strength_*</code> / <code>test_protection_*</code> / <code>test_report_*</code>, <code>test_lifecycle_*</code>, <code>test_adapters_*</code>, <code>test_ui_output.py</code> (fits 80 and 60 columns, no ANSI in plain mode, JSON keys unchanged); <code>*_review_fixes.py</code> cover the 2026-11-22 review fixes; <code>test_typing_fixes_*.py</code> cover bugs found while adding type checking (2026-11-23); <code>test_lawrun.py</code> the law-running core (every mode isolated)</td></tr>
 <tr><td><code>tests/tamper/</code></td><td>the <b>cheating test suite</b> (45 tests): every known trick played against a temp git copy of <code>examples/billing</code>, each shown to be caught. <code>test_tamper_tricks.py</code> (law edits, conftest/sitecustomize/.pth/.pyc side doors, skip/xfail, fewer examples, lock and history rewrites, special-casing the failing input, routing around a law with <code>refund_v2</code>), <code>test_tamper_in_process.py</code> (tricks from inside the law process: must be defeated or flagged, never a silent pass), <code>test_tamper_examples.py</code> (the examples are consistent and fail as expected)</td></tr>

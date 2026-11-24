@@ -45,10 +45,27 @@ jobs:
       # pyproject.toml). `uv run` uses the pyright version pinned in uv.lock.
       - name: Type check (pyright)
         run: uv run pyright
-      # docs/llms.txt, docs/llms-full.txt and docs/index.md are generated from the CLI parsers,
-      # action.yml, the agent instructions template and the docs: fail when they are out of date.
-      - name: LLM docs are up to date
+      # docs/llms.txt, docs/llms-full.txt, docs/onboarding.md and the generated pages in
+      # docs/site/reference/ come from the CLI parsers, action.yml, the agent instructions template
+      # and the docs: fail when they are out of date.
+      - name: Generated docs are up to date
         run: uv run python scripts/build_llms_docs.py --check
+
+  docs:
+    name: docs site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --group docs
+      # The public docs website (docs/site/, Sphinx + Furo + MyST): warnings are errors, so a
+      # broken link between pages or a bad directive fails the pull request.
+      - name: Build the docs website
+        run: uv run sphinx-build -W --keep-going -b html docs/site _build/site
+      # Outside links can be down for reasons unrelated to the change: report, never fail.
+      - name: Check outside links (does not fail the job)
+        continue-on-error: true
+        run: uv run sphinx-build -q -b linkcheck docs/site _build/linkcheck
 
   examples:
     name: example projects through the gate

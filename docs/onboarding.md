@@ -1,14 +1,14 @@
 <!-- Generated from docs/onboarding.html by scripts/build_llms_docs.py; do not edit. -->
 
-> Markdown version of the lawkeep onboarding guide (https://lawkeep.github.io/lawkeep/). For a compact reference written for LLMs and coding agents, read [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt); the index of LLM-ready pages is [llms.txt](https://lawkeep.github.io/lawkeep/llms.txt).
+> Markdown version of the lawkeep onboarding guide for contributors (https://lawkeep.github.io/lawkeep/contributing/onboarding.html). The user documentation is at https://lawkeep.github.io/lawkeep/. For a compact reference written for LLMs and coding agents, read [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt); the index of LLM-ready pages is [llms.txt](https://lawkeep.github.io/lawkeep/llms.txt).
 
 # lawkeep onboarding guide
 
 Everything a new developer needs to understand lawkeep: what it is for, how each part works, why it is built this way, and where to find the code. You do not need to know anything about this codebase, or about property-based testing, to start.
 
-> **Status as of 2026-11-22**
+> **Status as of 2026-11-24**
 >
-> lawkeep v0.1 is **built and integrated, but not committed or released**. All nine commands exist. Only Python 3.12 on Linux has been tested. The Codex, Cursor and Copilot adapters have never run inside the real agents, and the GitHub Action has never run on GitHub. These gaps are named again where they matter. The design source of truth is `docs/PLAN.md`. The code contract is `docs/ARCHITECTURE.md`.
+> lawkeep **0.1.0 is released on PyPI (Alpha)**. All nine commands exist. CI runs on Python 3.10, 3.12 and 3.13 on Linux; macOS was never tested and Windows is not supported. The Codex, Cursor and Copilot adapters have never run inside the real agents. This guide is for people working on lawkeep's code; the user documentation is at [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/). These gaps are named again where they matter. The design source of truth is `docs/PLAN.md`. The code contract is `docs/ARCHITECTURE.md`.
 
 ## 0. How to read this guide
 
@@ -688,8 +688,8 @@ Every project folder has a short `AGENTS.md` describing it (exceptions below). R
 | `docs/PLAN.md` | the design source of truth: principles, concepts, scope, roadmap, risks, **Decisions** (build choices marked "pending maintainer review"), open questions |
 | `docs/ARCHITECTURE.md` | the code contract: conventions, data formats, module signatures, commands, call graph |
 | `docs/OUTPUT-STYLE.md` | how every command talks to people |
-| `docs/guide/` | user guides: `non-technical.md` (a week with lawkeep through an agent), `developer.md`, `recipes.md` (patterns for strong laws, traps) |
-| `docs/onboarding.html` | this guide |
+| `docs/site/` | the public documentation website (Sphinx, Furo, MyST Markdown): getting started, concepts, guides, AI tools, writing laws, reference; published at https://lawkeep.github.io/lawkeep/ |
+| `docs/onboarding.html` | this guide (published at `/contributing/onboarding.html`) |
 | `src/lawkeep/` | the package (section 5): foundation modules at the top level, plus `commands/`, `adapters/` (with `templates/`: the AGENTS.md snippet, pre-commit block, starting `strategies.py`, workflow for `init --ci`), `strength/` |
 | `tests/` | 782 tests (collected 2026-11-23). Prefixes: `test_core_*`, `test_gate_*`, `test_strength_*` / `test_protection_*` / `test_report_*`, `test_lifecycle_*`, `test_adapters_*`, `test_ui_output.py` (fits 80 and 60 columns, no ANSI in plain mode, JSON keys unchanged); `*_review_fixes.py` cover the 2026-11-22 review fixes; `test_typing_fixes_*.py` cover bugs found while adding type checking (2026-11-23); `test_lawrun.py` the law-running core (every mode isolated) |
 | `tests/tamper/` | the **cheating test suite** (45 tests): every known trick played against a temp git copy of `examples/billing`, each shown to be caught. `test_tamper_tricks.py` (law edits, conftest/sitecustomize/.pth/.pyc side doors, skip/xfail, fewer examples, lock and history rewrites, special-casing the failing input, routing around a law with `refund_v2`), `test_tamper_in_process.py` (tricks from inside the law process: must be defeated or flagged, never a silent pass), `test_tamper_examples.py` (the examples are consistent and fail as expected) |

@@ -1,19 +1,27 @@
-"""Build lawkeep's LLM-friendly docs: ``docs/llms.txt``, ``docs/llms-full.txt``, ``docs/index.md``.
+"""Build lawkeep's generated docs: the LLM files and the generated pages of the docs website.
 
-The files follow the llms.txt convention (https://llmstxt.org) and are published at the root of
-the docs site (https://lawkeep.github.io/lawkeep/) by ``.github/workflows/pages.yml``.
+Generated files (never edit them by hand):
 
-They are generated, never edited by hand, from:
+- ``docs/llms.txt`` and ``docs/llms-full.txt``: the llms.txt convention (https://llmstxt.org),
+  published at the root of the docs site (https://lawkeep.github.io/lawkeep/);
+- ``docs/onboarding.md``: the internal onboarding guide ``docs/onboarding.html`` as Markdown
+  (published at ``/contributing/onboarding.md``);
+- ``docs/site/reference/commands.md``, ``github-action.md``, ``python-api.md`` and
+  ``default-lawkeep.toml``: pages (and one included file) of the Sphinx docs website in
+  ``docs/site/``.
+
+``.github/workflows/pages.yml`` builds and publishes all of it. The sources are:
 
 - ``scripts/llms.txt.template`` and ``scripts/llms-full.txt.template`` (the hand-written prose),
   whose ``{{...}}`` directives pull in
-- sections of ``README.md``, ``docs/ARCHITECTURE.md`` and ``docs/guide/*.md`` (by heading),
+- sections of ``README.md``, ``docs/ARCHITECTURE.md`` and the website pages ``docs/site/**/*.md``
+  (by heading),
 - the live CLI parsers (``lawkeep.cli.build_parser``), so every option is the real one,
 - ``lawkeep.exitcodes``, the report dataclasses in ``lawkeep.models``, the ``@law`` signature and
   the ``st`` helpers, the MCP server's instructions and tools (``lawkeep.mcp_server``),
 - the agent instructions snippet (``src/lawkeep/adapters/templates/agents_snippet.md``),
 - the inputs and outputs of ``action.yml``,
-- ``docs/onboarding.html`` (converted to Markdown as ``docs/index.md``).
+- ``docs/onboarding.html`` (converted to Markdown as ``docs/onboarding.md``).
 
 Usage::
 
@@ -41,7 +49,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # to see (lawkeep's own pre-tool-use guard reads the scripts agents run and refuses unclear writes).
 LLMS_TXT = ROOT / "docs" / "llms.txt"
 LLMS_FULL_TXT = ROOT / "docs" / "llms-full.txt"
-INDEX_MD = ROOT / "docs" / "index.md"
+ONBOARDING_MD = ROOT / "docs" / "onboarding.md"
+SITE_COMMANDS_MD = ROOT / "docs" / "site" / "reference" / "commands.md"
+SITE_ACTION_MD = ROOT / "docs" / "site" / "reference" / "github-action.md"
+SITE_API_MD = ROOT / "docs" / "site" / "reference" / "python-api.md"
+SITE_DEFAULT_TOML = ROOT / "docs" / "site" / "reference" / "default-lawkeep.toml"
 SITE = "https://lawkeep.github.io/lawkeep"
 REPO = "https://github.com/lawkeep/lawkeep"
 SCRIPT = "scripts/build_llms_docs.py"
@@ -116,7 +128,8 @@ def section_body(rel_path: str, heading: str, shift: int, *, own_text_only: bool
 
 
 def _relink(text: str, rel_path: str) -> str:
-    """Turn relative Markdown links into absolute GitHub links, so they work anywhere."""
+    """Turn relative Markdown links into absolute links, so they work anywhere: pages of the docs
+    website (``docs/site/``) link to their Markdown copy on the site, other files to GitHub."""
     base = Path(rel_path).parent
 
     def fix(m: re.Match[str]) -> str:
@@ -125,6 +138,9 @@ def _relink(text: str, rel_path: str) -> str:
             return m.group(0)
         path, _, anchor = target.partition("#")
         resolved = os.path.normpath(base / path).replace(os.sep, "/")
+        if resolved.startswith("docs/site/") and resolved.endswith(".md"):
+            page = resolved.removeprefix("docs/site/")
+            return f"[{label}]({SITE}/{page}" + (f"#{anchor}" if anchor else "") + ")"
         kind = (
             "tree" if resolved.endswith("/") or "." not in resolved.rsplit("/", 1)[-1] else "blob"
         )
@@ -664,11 +680,124 @@ def render_onboarding_markdown() -> str:
     blocks = _blocks(main)
     header = (
         f"<!-- Generated from docs/onboarding.html by {SCRIPT}; do not edit. -->\n\n"
-        f"> Markdown version of the lawkeep onboarding guide ({SITE}/). For a compact "
-        f"reference written for LLMs and coding agents, read [llms-full.txt]({SITE}/llms-full.txt); "
-        f"the index of LLM-ready pages is [llms.txt]({SITE}/llms.txt)."
+        f"> Markdown version of the lawkeep onboarding guide for contributors "
+        f"({SITE}/contributing/onboarding.html). The user documentation is at {SITE}/. For a "
+        f"compact reference written for LLMs and coding agents, read "
+        f"[llms-full.txt]({SITE}/llms-full.txt); the index of LLM-ready pages is "
+        f"[llms.txt]({SITE}/llms.txt)."
     )
     return header + "\n\n" + "\n\n".join(blocks).strip() + "\n"
+
+
+# ---------------------------------------------------------------------------------------------
+# Generated pages of the docs website (docs/site/)
+
+
+def _generated_note(sources: str) -> str:
+    return f"<!-- Generated from {sources} by {SCRIPT}; do not edit. -->"
+
+
+def render_site_commands() -> str:
+    """``docs/site/reference/commands.md``: every command and option from the live parsers."""
+    return "\n".join(
+        [
+            _generated_note("the lawkeep command-line parsers and docs/ARCHITECTURE.md section 7"),
+            "",
+            "# Commands",
+            "",
+            "Every lawkeep command, with its exact options. This page is generated from lawkeep "
+            f"{__version__}'s own command-line parsers, so it always matches `lawkeep <command> "
+            "--help`. What the result codes mean is explained in [Result codes](result-codes.md).",
+            "",
+            render_commands(2),
+            "",
+        ]
+    )
+
+
+def render_site_action() -> str:
+    """``docs/site/reference/github-action.md``: inputs and outputs of ``action.yml``."""
+    return "\n".join(
+        [
+            _generated_note("action.yml"),
+            "",
+            "# GitHub Action inputs and outputs",
+            "",
+            "The lawkeep GitHub Action is `action.yml` at the root of the lawkeep repository. This "
+            "page is generated from that file. How to use it: "
+            "[CI and the GitHub Action](../guides/ci.md).",
+            "",
+            "## Inputs",
+            "",
+            render_action()
+            .removeprefix("Inputs:\n\n")
+            .replace("\n\nOutputs:\n\n", "\n\n## Outputs\n\n"),
+            "",
+        ]
+    )
+
+
+def _clean_docstring(fn: object) -> str:
+    doc = inspect.getdoc(fn) or ""
+    doc = doc.replace("``", "`")
+    return re.sub(r"::\n", ":\n", doc)
+
+
+def render_site_python_api() -> str:
+    """``docs/site/reference/python-api.md``: ``@law`` and the ``st`` helpers."""
+    out = [
+        _generated_note("the signatures and docstrings in lawkeep._law and lawkeep.strategies"),
+        "",
+        "# Python API",
+        "",
+        "What a law file imports. Everything else in lawkeep is used through the `lawkeep` "
+        "command, not from Python.",
+        "",
+        "```python",
+        "from lawkeep import law, given, st, example, settings, assume, note, event",
+        "```",
+        "",
+        "`given`, `example`, `settings`, `assume`, `note` and `event` are "
+        "[Hypothesis](https://hypothesis.readthedocs.io/)'s own. `get_law`, `is_law` and "
+        "`LawMeta` read the law information attached to a function. `lawkeep.__version__` is "
+        "the installed version. How to use them: [Writing laws](../writing-laws/index.md).",
+        "",
+        "## law",
+        "",
+        "```python",
+        _signature(law_module.law, "law"),
+        "```",
+        "",
+        _clean_docstring(law_module.law),
+        "",
+        "## st",
+        "",
+        "`st` is everything in `hypothesis.strategies`, plus the helpers below, plus every "
+        "generator your project defines in `laws/strategies.py` (for example `st.charges()`). "
+        "Names that Hypothesis already has (`times`, `dates`, `text`) always mean Hypothesis's "
+        "version, so give your own generators other names.",
+    ]
+    if st_module.__all__[:4] != ["money", "percentages", "non_empty_text", "ids"]:
+        raise BuildError("lawkeep.strategies.__all__ no longer starts with the four helpers")
+    for helper in st_module.__all__[:4]:
+        fn = getattr(st_module, helper)
+        out += [
+            "",
+            f"### st.{helper}",
+            "",
+            "```python",
+            _signature(fn, f"st.{helper}"),
+            "```",
+            "",
+            _clean_docstring(fn),
+        ]
+    return "\n".join(out) + "\n"
+
+
+def render_default_toml() -> str:
+    from lawkeep import config
+
+    return config.render_default_toml(agent_name="claude-code")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -722,7 +851,11 @@ def build() -> dict[Path, str]:
     return {
         LLMS_TXT: render_template("scripts/llms.txt.template"),
         LLMS_FULL_TXT: render_template("scripts/llms-full.txt.template"),
-        INDEX_MD: render_onboarding_markdown(),
+        ONBOARDING_MD: render_onboarding_markdown(),
+        SITE_COMMANDS_MD: render_site_commands(),
+        SITE_ACTION_MD: render_site_action(),
+        SITE_API_MD: render_site_python_api(),
+        SITE_DEFAULT_TOML: render_default_toml(),
     }
 
 
@@ -765,15 +898,23 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        print("LLM docs are up to date: " + ", ".join(_rel(p) for p in files))
+        print("Generated docs are up to date: " + ", ".join(_rel(p) for p in files))
         return 0
     # One plain write per file (see the note at LLMS_TXT).
     if LLMS_TXT in stale:
         LLMS_TXT.write_text(files[LLMS_TXT], encoding="utf-8")
     if LLMS_FULL_TXT in stale:
         LLMS_FULL_TXT.write_text(files[LLMS_FULL_TXT], encoding="utf-8")
-    if INDEX_MD in stale:
-        INDEX_MD.write_text(files[INDEX_MD], encoding="utf-8")
+    if ONBOARDING_MD in stale:
+        ONBOARDING_MD.write_text(files[ONBOARDING_MD], encoding="utf-8")
+    if SITE_COMMANDS_MD in stale:
+        SITE_COMMANDS_MD.write_text(files[SITE_COMMANDS_MD], encoding="utf-8")
+    if SITE_ACTION_MD in stale:
+        SITE_ACTION_MD.write_text(files[SITE_ACTION_MD], encoding="utf-8")
+    if SITE_API_MD in stale:
+        SITE_API_MD.write_text(files[SITE_API_MD], encoding="utf-8")
+    if SITE_DEFAULT_TOML in stale:
+        SITE_DEFAULT_TOML.write_text(files[SITE_DEFAULT_TOML], encoding="utf-8")
     for path, content in files.items():
         state = "wrote" if path in stale else "unchanged"
         print(f"{state} {_rel(path)} ({len(content):,} characters)")

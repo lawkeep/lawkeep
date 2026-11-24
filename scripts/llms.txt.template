@@ -24,16 +24,27 @@ Rules for coding agents working in a project that uses lawkeep (full text in llm
 ## Docs
 
 - [Full reference for LLMs]({{site}}/llms-full.txt): everything in one Markdown file: concepts, quick start for people and agents, every command with its exact options, result codes, the `--json` schema, file formats, the `@law` API, the rules for agents, MCP tools, the GitHub Action, known limits
-- [Onboarding guide]({{site}}/index.md): the docs site's home page as Markdown: concepts with a running example, every command, architecture, repository tour, data formats, safety model, glossary
-- [Developer guide]({{site}}/guide/developer.md): commands, `lawkeep.toml`, files on disk, how `check` runs, permissions and directions, long runs without a person, writing laws, CI
-- [Using lawkeep by talking to your coding agent]({{site}}/guide/non-technical.md): a week with lawkeep without typing commands or reading code
-- [Law recipes]({{site}}/guide/recipes.md): patterns that make laws strong, and traps to avoid
+- [Home]({{site}}/index.md): what lawkeep is, the problem, the promise, a 30-second example, install, status
+- [Getting started]({{site}}/getting-started.md): install, `lawkeep init`, a first law (through your agent or `lawkeep draft`), `lawkeep approve`, `lawkeep check`, what the output means
+- [Concepts]({{site}}/concepts/index.md): [laws]({{site}}/concepts/laws.md), [drafts and approval]({{site}}/concepts/drafts-and-approval.md), [permissions by direction]({{site}}/concepts/directions.md), [law history and lock]({{site}}/concepts/history-and-lock.md), [the gate and result codes]({{site}}/concepts/gate.md), [law strength]({{site}}/concepts/strength.md), [protection report]({{site}}/concepts/protection.md), [waiting list and person present]({{site}}/concepts/waiting-list.md)
+- [Using lawkeep by talking to your agent]({{site}}/guides/talking-to-your-agent.md): a week with lawkeep without typing commands or reading code
+- [Developer daily workflow]({{site}}/guides/developer-workflow.md): check, report, draft, strength, useful options, the pre-commit hook
+- [CI and the GitHub Action]({{site}}/guides/ci.md): the pull-request comment, failing the job only if you opt in, nightly deep search
+- [Long runs without a person]({{site}}/guides/long-runs.md): park and keep going, `person_present`, one waiting list
+- [Changing a law]({{site}}/guides/changing-a-law.md): `lawkeep propose`, directions, deleting a law
+- [Handling an unrecorded law change]({{site}}/guides/unrecorded-changes.md): put it back or accept it
+- [AI tools]({{site}}/agents/index.md): what `lawkeep init --agent` sets up for [Claude Code]({{site}}/agents/claude-code.md), [Codex]({{site}}/agents/codex.md), [Cursor]({{site}}/agents/cursor.md) and [GitHub Copilot]({{site}}/agents/copilot.md), what is verified, and the [MCP server]({{site}}/agents/mcp.md)
+- [Writing good laws]({{site}}/writing-laws/index.md): `@law`, `inputs=`, input generators; [recipes]({{site}}/writing-laws/recipes.md); [avoiding weak laws]({{site}}/writing-laws/weak-laws.md)
+- [Commands]({{site}}/reference/commands.md): every command and option, generated from the CLI parsers
+- [Reference]({{site}}/reference/configuration.md): [`lawkeep.toml`]({{site}}/reference/configuration.md), [result codes]({{site}}/reference/result-codes.md), [files and formats]({{site}}/reference/files.md), [JSON output]({{site}}/reference/json.md), [Python API]({{site}}/reference/python-api.md), [GitHub Action inputs and outputs]({{site}}/reference/github-action.md)
+- [FAQ and known limits]({{site}}/faq.md): honest answers and the edges of v0.1
 
 ## Optional
 
+- [Onboarding guide for contributors]({{site}}/contributing/onboarding.md): how lawkeep works inside: every command, architecture, repository tour, data formats, safety model, glossary
+- [Contributing]({{site}}/CONTRIBUTING.md): branch names, Conventional Commits, pull requests, releases
+- [Changelog]({{site}}/CHANGELOG.md): changes per release
 - [README]({{site}}/README.md): project overview, the promise, known limits, quick starts
 - [Architecture]({{site}}/ARCHITECTURE.md): the code contract for contributors: data formats, module signatures, commands, call graph
 - [Plan]({{site}}/PLAN.md): design source of truth: principles, roadmap, risks, decisions, open questions
 - [Output style]({{site}}/OUTPUT-STYLE.md): how every command talks to people (words, layout)
-- [Changelog]({{site}}/CHANGELOG.md): changes per release
-- [Contributing]({{site}}/CONTRIBUTING.md): branch names, Conventional Commits, pull requests, releases

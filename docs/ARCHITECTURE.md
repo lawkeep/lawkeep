@@ -63,7 +63,7 @@ Only edit files you own. Need a change elsewhere? Work around it in your files a
 | C Strength & protection | `strength/` (package, any submodules), `protection.py`, `commands/strength.py`, `commands/report.py`, `tests/test_strength_*.py`, `tests/test_protection_*.py`, `tests/test_report_*.py` |
 | D Law lifecycle | `permissions.py`, `direction.py`, `examples_table.py` + `_probe_worker.py`, `agent_launcher.py`, `lawchanges.py`, `waiting.py`, `approvals.py`, `presence.py`, `commands/draft.py`, `commands/approve.py`, `commands/propose.py`, `tests/test_lifecycle_*.py` |
 | E Adapters | `adapters/` (package), `mcp_server.py`, `commands/init.py`, `commands/hook.py`, `commands/mcp.py`, `tests/test_adapters_*.py` |
-| F CI & proof | `action.yml`, `.github/workflows/`, `examples/`, `tests/tamper/`, `README.md`, `docs/guide/` |
+| F CI & proof | `action.yml`, `.github/workflows/`, `examples/`, `tests/tamper/`, `README.md`, `docs/site/` |
 
 (Test-file prefixes for B–F are suggestions if your task gives none; the orchestrator's task text wins.)
 Only A edits `pyproject.toml` in this phase: report needed dependencies instead (`uv run --with <pkg>` for experiments).
@@ -654,7 +654,7 @@ commit):
 `action.yml` (composite action: `lawkeep check --json`, then `lawkeep report` (Markdown first;
 the JSON run skips the protection step when the Markdown worked, so planted bugs run once) → one
 PR comment, never blocking by itself), `.github/workflows/` (`ci.yml`, `nightly.yml`,
-`templates/`), two made-up `examples/`, `tests/tamper/` (cheating suite), `README.md`, `docs/guide/`.
+`templates/`), two made-up `examples/`, `tests/tamper/` (cheating suite), `README.md`, `docs/site/` (the docs website; it replaced `docs/guide/` on 2026-11-24).
 
 ## 7. Commands (as built)
 

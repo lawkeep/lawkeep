@@ -3,16 +3,25 @@
 Repository tools that are not part of the installed `lawkeep` package (nothing here ships in
 the wheel).
 
-- `build_llms_docs.py`: builds the LLM-friendly docs (llms.txt convention, https://llmstxt.org)
-  and writes them under `docs/`: `docs/llms.txt` (index: summary, key facts, result codes, rules
-  for agents, links), `docs/llms-full.txt` (the whole reference in one Markdown file, about 17k
-  tokens) and `docs/index.md` (`docs/onboarding.html` converted to Markdown with a small
-  stdlib HTML parser). `.github/workflows/pages.yml` copies them to the site root.
+- `build_llms_docs.py`: builds every generated doc file:
+  - the LLM-friendly docs (llms.txt convention, https://llmstxt.org) under `docs/`:
+    `docs/llms.txt` (index: summary, key facts, result codes, rules for agents, links to the
+    Markdown copies of the website pages), `docs/llms-full.txt` (the whole reference in one
+    Markdown file, about 17k tokens) and `docs/onboarding.md` (`docs/onboarding.html` converted to
+    Markdown with a small stdlib HTML parser);
+  - the generated pages of the docs website: `docs/site/reference/commands.md` (every command and
+    option from the live parsers, with the result codes from `docs/ARCHITECTURE.md` section 7),
+    `docs/site/reference/github-action.md` (inputs and outputs of `action.yml`),
+    `docs/site/reference/python-api.md` (`@law` and the `st` helpers: signatures and docstrings)
+    and `docs/site/reference/default-lawkeep.toml` (`config.render_default_toml`, included by
+    `reference/configuration.md`).
+  `.github/workflows/pages.yml` publishes them (see `docs/site/AGENTS.md`).
 - `llms.txt.template`, `llms-full.txt.template`: the hand-written prose of the two files. Their
   `{{...}}` directives are filled in by the script:
   - `{{section:FILE|HEADING LINE|SHIFT}}` (add `|own` to stop at the first sub-heading): the text
-    under that exact heading in `README.md`, `docs/ARCHITECTURE.md` or `docs/guide/*.md`, headings
-    shifted by SHIFT levels, relative links made absolute;
+    under that exact heading in `README.md`, `docs/ARCHITECTURE.md` or a website page
+    (`docs/site/**/*.md`), headings shifted by SHIFT levels, relative links made absolute (links to
+    website pages point to their Markdown copy on the site, other files to GitHub);
   - `{{commands:LEVEL}}`: every command, usage and option from the live parsers
     (`lawkeep.cli.build_parser`), result codes from `docs/ARCHITECTURE.md` section 7;
   - `{{exit_codes}}` (`lawkeep.exitcodes`), `{{models}}` (field names of the report dataclasses in
@@ -32,12 +41,14 @@ not from argparse's help text).
 Gotchas:
 
 - Never edit the generated files; edit the template or the source and run the script. Changing a
-  command option, `action.yml`, the agent snippet, a report model, `docs/onboarding.html`, the
-  quoted sections of `README.md` / `docs/ARCHITECTURE.md` / `docs/guide/` or the version means
-  running the script in the same change.
+  command option, `action.yml`, the agent snippet, a report model, a docstring of `@law` or an
+  `st` helper, the default `lawkeep.toml`, `docs/onboarding.html`, the quoted sections of
+  `README.md` / `docs/ARCHITECTURE.md` / `docs/site/` or the version means running the script in
+  the same change.
 - Renaming a heading that a template quotes stops the build with a clear message: update the
   template.
-- The script writes only through the three named paths (`LLMS_TXT`, `LLMS_FULL_TXT`, `INDEX_MD`):
+- The script writes only through the named paths (`LLMS_TXT`, `LLMS_FULL_TXT`, `ONBOARDING_MD`,
+  `SITE_COMMANDS_MD`, `SITE_ACTION_MD`, `SITE_API_MD`, `SITE_DEFAULT_TOML`):
   lawkeep's pre-tool-use guard reads scripts that agents run and refuses writes to paths it
   cannot see.
 - Checked by ruff and pyright (standard mode) like `tests/`.

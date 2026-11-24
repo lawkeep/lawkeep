@@ -22,6 +22,10 @@ htmlcov/
 mutants/
 .mutmut-cache
 
+# Docs website builds (docs/site/; see .github/workflows/pages.yml)
+_build/
+_site/
+
 # lawkeep local state (session marker, caches); laws/ and laws.lock ARE committed
 .lawkeep/
 laws.lock.tmp

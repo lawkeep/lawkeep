@@ -6,6 +6,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Typed: pyright strict](https://img.shields.io/badge/typed-pyright%20strict-blue)](https://github.com/microsoft/pyright)
 [![Downloads](https://img.shields.io/pypi/dm/lawkeep)](https://pypi.org/project/lawkeep/)
+[![Docs](https://img.shields.io/badge/docs-lawkeep.github.io-blue)](https://lawkeep.github.io/lawkeep/)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/lawkeep/lawkeep/badge)](https://securityscorecards.dev/viewer/?uri=github.com/lawkeep/lawkeep)
 
 **Only review what your laws don't protect.**
@@ -16,9 +17,9 @@ agent writes and maintains the checks behind them. lawkeep records every law cha
 before any law gets weaker, runs one gate that says `ALL LAWS HOLD` or `SOME LAWS FAIL`, and
 shows you which changed code no law protects, so that is the only code you still need to read.
 
-> **Status: pre-alpha.** v0.1 is being built in this repository and is not released yet. The
-> names `lawkeep` on PyPI and npm are placeholders. Commands and file formats may still change.
-> The design is in [docs/PLAN.md](docs/PLAN.md).
+> **Status: lawkeep 0.1.0 is released on [PyPI](https://pypi.org/project/lawkeep/) (Alpha).**
+> Commands and file formats may still change. Read the [known limits](#known-limits) before you
+> rely on it. Documentation: **[lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/)**.
 
 ## The promise, honestly
 
@@ -120,7 +121,8 @@ counted, with a suggestion for each kind; "N things wait for your decision" also
 start of the next session, in `lawkeep check`, in `lawkeep report` and in the pull-request
 comment.
 
-The [non-technical guide](docs/guide/non-technical.md) walks through a week with lawkeep.
+The guide [Using lawkeep by talking to your agent](https://lawkeep.github.io/lawkeep/guides/talking-to-your-agent.html) walks
+through a week with lawkeep.
 
 ## Quick start: developers
 
@@ -188,8 +190,9 @@ terminal, in CI, or with `NO_COLOR` set.
 A $0.25 payment would be refunded as $0.26. The failing input is saved and retried on every
 later run.
 
-More in the [developer guide](docs/guide/developer.md) and the
-[law recipes](docs/guide/recipes.md).
+More in [Getting started](https://lawkeep.github.io/lawkeep/getting-started.html), the
+[developer workflow](https://lawkeep.github.io/lawkeep/guides/developer-workflow.html) and the
+[law recipes](https://lawkeep.github.io/lawkeep/writing-laws/recipes.html).
 
 ## In pull requests
 
@@ -207,11 +210,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: lawkeep/lawkeep@v0     # available once v0.1 is tagged
+      - uses: lawkeep/lawkeep@v0.1.0
 ```
 
 Full templates (pull requests and a nightly deep search) are in
-[.github/workflows/templates/](.github/workflows/templates/).
+[.github/workflows/templates/](.github/workflows/templates/); see
+[CI and the GitHub Action](https://lawkeep.github.io/lawkeep/guides/ci.html). (The workflow `lawkeep init --ci` writes in 0.1.0
+uses `@v0`, a tag that is not published yet: pin `@v0.1.0` instead.)
 
 ## Supported coding agents
 
@@ -270,14 +275,16 @@ uv run lawkeep check                                          # lawkeep checks i
 
 ## Learn more
 
-- **Docs site: [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/)** (the onboarding
-  guide: concepts, every command, architecture).
+- **Documentation: [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/)**: getting started, concepts, guides
+  (also for people who only talk to their coding agent), AI tools, writing good laws, the command
+  reference, FAQ and known limits.
 - **For LLMs and coding agents:** [llms.txt](https://lawkeep.github.io/lawkeep/llms.txt) (index,
   [llmstxt.org](https://llmstxt.org) convention) and
   [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt) (the whole reference in one
   Markdown file), generated from the source by `scripts/build_llms_docs.py`.
 - [docs/PLAN.md](docs/PLAN.md): design, principles, roadmap, risks, decisions.
-- [docs/guide/](docs/guide/): guides for non-technical users and developers, and law recipes.
+- [Onboarding guide for contributors](https://lawkeep.github.io/lawkeep/contributing/onboarding.html): how lawkeep works
+  inside (every command, architecture, repository tour, data formats, safety model).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): module contract for contributors.
 - [AGENTS.md](AGENTS.md): instructions for coding agents working on lawkeep itself.
 

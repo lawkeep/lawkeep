@@ -3,8 +3,11 @@
 CI for the lawkeep repository itself (see `README.md` here for the table).
 
 - `ci.yml`: tests on Python 3.10 / 3.12 / 3.13, ruff (on `src`, `tests`, `scripts`), pyright and
-  the LLM-docs drift check `scripts/build_llms_docs.py --check` (the `lint` job; pyright's
-  version comes from `uv.lock` through `uv sync --locked`), both examples through
+  the generated-docs drift check `scripts/build_llms_docs.py --check` (the `lint` job; pyright's
+  version comes from `uv.lock` through `uv sync --locked`), the docs website build (job
+  `docs site`: `uv sync --locked --group docs`, `sphinx-build -W --keep-going`, then a
+  `linkcheck` step with `continue-on-error`; not a required check unless added to the ruleset),
+  both examples through
   `lawkeep check`, each planted bug failing the gate, and a self-test of `action.yml`.
 - `lawkeep.yml`: lawkeep checking its own repository (the root `laws/`, three laws about
   `lawkeep.exitcodes`). Installed by `lawkeep init`, fingerprinted in the root `laws.lock`, so it
@@ -18,13 +21,14 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
 - `scorecard.yml`: OpenSSF Scorecard weekly and on pushes to `main`; results go to the Security
   tab and the public badge. With `publish_results: true` the job may only use the actions
   Scorecard allows and the workflow may not set top-level `env`/`defaults`.
-- `pages.yml`: builds the docs site (`docs/onboarding.html` as `index.html`, plus project links
-  injected after the sidebar's `<div class="brand">` line; the build stops if that line changes),
-  copies the generated LLM docs (`docs/llms.txt`, `docs/llms-full.txt`, `docs/index.md`, also as
-  `onboarding.html.md`) and Markdown copies of the guides (`guide/`), PLAN, ARCHITECTURE,
-  OUTPUT-STYLE, README, CHANGELOG and CONTRIBUTING to the site root, and deploys it to
-  https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch `docs/`, those root files or
-  the workflow.
+- `pages.yml`: builds the docs website with Sphinx from `docs/site/` (warnings are errors; every
+  page also written as `<page>.md` by `docs/site/conf.py`) at the site root, adds
+  `docs/llms.txt` and `docs/llms-full.txt` at the root, the internal onboarding guide at
+  `contributing/onboarding.html` (links injected after the sidebar's `<div class="brand">` line;
+  the build stops if that line changes) and `contributing/onboarding.md`, a redirect from the old
+  `/onboarding.html`, and Markdown copies of PLAN, ARCHITECTURE, OUTPUT-STYLE, README, CHANGELOG and
+  CONTRIBUTING, and deploys it to https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch
+  `docs/`, those root files, the agent snippet, `pyproject.toml`/`uv.lock` or the workflow.
   Pages must be set to "GitHub Actions" in the repository settings.
 - The required status checks on `main` (ruleset) use the job names as GitHub shows them: renaming
   a job in `ci.yml`, `pr-title.yml` or `dependency-review.yml` means updating the ruleset too.

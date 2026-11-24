@@ -75,7 +75,8 @@ counted, with a suggestion for each kind; "N things wait for your decision" also
 start of the next session, in `lawkeep check`, in `lawkeep report` and in the pull-request
 comment.
 
-The [non-technical guide](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/non-technical.md) walks through a week with lawkeep.
+The guide [Using lawkeep by talking to your agent](https://lawkeep.github.io/lawkeep/guides/talking-to-your-agent.html) walks
+through a week with lawkeep.
 
 ### For developers
 
@@ -143,8 +144,9 @@ terminal, in CI, or with `NO_COLOR` set.
 A $0.25 payment would be refunded as $0.26. The failing input is saved and retried on every
 later run.
 
-More in the [developer guide](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/developer.md) and the
-[law recipes](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/recipes.md).
+More in [Getting started](https://lawkeep.github.io/lawkeep/getting-started.html), the
+[developer workflow](https://lawkeep.github.io/lawkeep/guides/developer-workflow.html) and the
+[law recipes](https://lawkeep.github.io/lawkeep/writing-laws/recipes.html).
 
 ### For coding agents
 
@@ -748,7 +750,9 @@ st.ids(*, prefix: str = '', max_value: int = 10000) -> SearchStrategy[str]
 ```
 
 ```python
-from lawkeep import example, given, law, settings, st
+from decimal import Decimal
+
+from lawkeep import example, given, law, st
 
 @law(
     "A discount code never raises the price and never takes it below zero",
@@ -763,15 +767,15 @@ def discount_stays_between_zero_and_price(price, code):
 - `@law` goes on any pytest test (above or below `@given`) or on a Hypothesis
   `RuleBasedStateMachine`. The law id is the file path inside `laws/` plus the function name:
   `laws/discounts.py::discount_stays_between_zero_and_price` → `discounts.discount_stays_between_zero_and_price`.
-- `inputs=` (optional) says in plain words what each input is; people see it next to the
-  example table when they approve the law. Without it lawkeep writes something like
-  "a sample discount code that lawkeep made up for testing". `lawkeep draft` asks the agent to
-  always fill it in.
+- `inputs=` (optional) says in plain words what each input is; people see it next to the example
+  table when they approve the law. Without it lawkeep writes something like "a sample discount code
+  that lawkeep made up for testing". `lawkeep draft` asks the agent to always fill it in.
 - `st` is `hypothesis.strategies` plus `st.money()`, `st.percentages()`, `st.non_empty_text()`,
-  `st.ids()`, and anything you define in `laws/strategies.py`. Names that Hypothesis already has
-  (for example `times`, `dates`, `text`) always mean Hypothesis's version; give your own
-  generators different names (`clock_times`, not `times`).
-- See [recipes.md](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/recipes.md) for patterns.
+  `st.ids()`, and anything you define in `laws/strategies.py`. Names that Hypothesis already has (for
+  example `times`, `dates`, `text`) always mean Hypothesis's version; give your own generators
+  different names (`clock_times`, not `times`).
+- `@example(...)` adds fixed cases that run every time, next to the generated ones.
+- Use `Decimal` and `st.money()` for money, never floats.
 
 A complete law file (from the README):
 
@@ -794,7 +798,7 @@ A law is a normal pytest test written with [Hypothesis](https://hypothesis.readt
 plus a sentence. You judge the sentence and a table of concrete examples
 ("payment $40, refund $50 → refused"); you never have to read the code.
 
-### Traps to avoid (from the law recipes)
+### Traps to avoid
 
 | Trap | Why it is a problem | Instead |
 | --- | --- | --- |
@@ -807,17 +811,34 @@ plus a sentence. You judge the sentence and a table of concrete examples
 | Floats for money | `0.1 + 0.2 != 0.3` | `Decimal` and `st.money()` |
 | Lowering `examples`, adding `@settings(max_examples=1)`, or `skip` to get green | it weakens the law | lawkeep records it as a looser change that needs a person's yes |
 
+Patterns for strong laws (a limit plus its exact companion, sequences of actions and state machines, undo, a controlled clock, bounds, round trips, comparing with a simpler version, money, monotonic changes): https://lawkeep.github.io/lawkeep/writing-laws/recipes.md
+
 ## 10. Long runs without a person
 
-For overnight or CI runs, agents follow **park and keep going** (in the `AGENTS.md` snippet,
-the session-start reminder and the MCP instructions): when a law blocks them and nobody is
-there, they `lawkeep propose` the change with a reason (looser or unclear changes wait), never
-work around or edit the law, never run `lawkeep approve`, finish every part of the task that
-does not depend on that law, and end with a summary: done / waiting for the person (ids) / not
-done because blocked. When a person is there, they still stop and ask.
+When a law blocks the agent and nobody is there, the agent:
 
-How an agent knows: `person_present` and `person_present_reason` in `check --json`,
-`report --json`, `approve --json` and the session-start hook. It is a guess, first match wins:
+1. **Parks the change.** It writes the change it needs under `laws/drafts/` and runs
+   `lawkeep propose <LAW_ID> --file laws/drafts/<file>.py --reason "<why>"`. A looser or unclear
+   change waits for a person; lawkeep prints an id such as `h-1a2b3c4d`.
+2. **Never works around the law.** It does not edit `laws/`, `laws.lock` or `lawkeep.toml`, does not
+   special-case the failing input, and never runs `lawkeep approve`.
+3. **Keeps going** with every part of the task that does not depend on the blocked law, and leaves the
+   parts that do depend on it undone.
+4. **Ends with a summary in three lists:** done; waiting for the person (each `h-...` id, with one
+   line on why); not done because a law blocked it.
+
+When a person is there, nothing changes: the agent stops and asks. Stopping to ask is a successful
+outcome, not a failure.
+
+These rules are in the `AGENTS.md` section that `lawkeep init` writes, in Cursor's rule file and
+Copilot's instructions, in the reminder at the start of each agent session, in the MCP server's
+instructions and in the prompt of `lawkeep draft`.
+
+### How an agent knows whether a person is there
+
+Agents read `person_present` (and `person_present_reason`) in `lawkeep check --json`,
+`lawkeep report --json`, `lawkeep approve --json` and the session-start hook. It is lawkeep's guess;
+the first matching signal wins:
 
 | Signal | `person_present` |
 | --- | --- |
@@ -828,20 +849,29 @@ How an agent knows: `person_present` and `person_present_reason` in `check --jso
 | Claude Code `CLAUDE_CODE_ENTRYPOINT=cli` / `sdk-*` (`claude -p`) | true / false |
 | anything else (Codex, Cursor, Copilot, scripts) | false |
 
-The Claude Code variables were seen in Claude Code 2.1, not taken from a documented contract.
-Other agents set nothing lawkeep recognises, so their interactive sessions read as false; the
-instructions say a person chatting with the agent counts as present. The guess never changes
-what lawkeep allows. `propose --json` adds `next_step` ("Parked as h-… Continue with work that
-does not depend on this law; list h-… in your final summary …" when nobody is there).
+The Claude Code variables were seen in Claude Code 2.1, not taken from a documented contract. Other
+agents set nothing lawkeep recognises, so their interactive sessions read as false; the instructions
+say a person chatting with the agent counts as present. The guess never changes what lawkeep allows.
 
-Everything waiting is counted in the additive JSON field `waiting_for_person` (`count`, `ids`,
-`by_kind`, `items`) of `check`, `report` and `approve`, and shown as one line ("3 things wait
-for your decision (…) — run `lawkeep approve`") in `check`, `report`, the PR comment and the
-session-start/end hooks. It never changes a result code; 2 still means "waiting for a
-person's decision". An approval made without a terminal stays on the list until someone in a
-terminal confirms it (`confirm_approval` in the history) or undoes it (`undo_approval`: the law
-files go back, using a copy lawkeep kept in `laws/drafts/proposals/undo/` or the version in
-git; an undone draft returns to `laws/drafts/`).
+When a proposal waits and nobody is there, `lawkeep propose --json` adds `next_step`: "Parked as h-…
+Continue with work that does not depend on this law; list h-… in your final summary …".
+
+### One waiting list
+
+Everything that piled up is counted in one place: new drafts, proposed law changes, edits by the
+drafting agent, law files changed outside lawkeep, and approvals made without a terminal. You see
+one line ("3 things wait for your decision (…) — run `lawkeep approve`") in `lawkeep check`,
+`lawkeep report`, the pull-request comment and at the start and end of the next agent session. In
+JSON it is the field `waiting_for_person` (`count`, `ids`, `by_kind`, `items`). It never changes a
+result code; 2 still means "waiting for a person's decision".
+
+In the morning, `lawkeep approve` shows the whole list, grouped and counted, with a suggestion for
+each kind. It offers to approve the safe items together (new drafts that work and are strong, and
+stricter changes); anything that would loosen a law is shown on its own.
+
+An approval made without a terminal stays on the list until someone in a terminal confirms it or
+undoes it. Undoing puts the law files back, using a copy lawkeep kept in
+`laws/drafts/proposals/undo/` or the version in git; an undone draft goes back to `laws/drafts/`.
 
 ## 11. MCP server
 
@@ -860,7 +890,7 @@ Tools (each of `check`, `propose`, `report` runs `python -m lawkeep <command> --
 
 ## 12. GitHub Action
 
-`uses: lawkeep/lawkeep@v0` (composite action, `action.yml` at the repository root). It runs `lawkeep check --json` and `lawkeep report` on a fresh checkout and posts one pull-request comment (updated, never duplicated) with the verdict, the law changes and the protection report. It never blocks a merge by itself.
+`uses: lawkeep/lawkeep@v0.1.0` (composite action, `action.yml` at the repository root). It runs `lawkeep check --json` and `lawkeep report` on a fresh checkout and posts one pull-request comment (updated, never duplicated) with the verdict, the law changes and the protection report. It never blocks a merge by itself.
 
 ```yaml
 # .github/workflows/lawkeep.yml
@@ -872,8 +902,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }   # the protection report diffs against the base branch
-      - uses: lawkeep/lawkeep@v0
+      - uses: lawkeep/lawkeep@v0.1.0
 ```
+
+Note: the workflow written by `lawkeep init --ci` in 0.1.0 uses `lawkeep/lawkeep@v0`, a tag that does not exist yet; pin `@v0.1.0` (or a commit SHA) instead.
 
 Inputs:
 
@@ -940,9 +972,10 @@ Also not in v0.1: other programming languages, laws against a real database, rac
 
 ## 14. Links
 
-- Docs site: https://lawkeep.github.io/lawkeep/ (Markdown: https://lawkeep.github.io/lawkeep/index.md)
+- Docs website: https://lawkeep.github.io/lawkeep/ (every page also as Markdown: replace `.html` with `.md`, for example https://lawkeep.github.io/lawkeep/getting-started.md)
 - Repository: https://github.com/lawkeep/lawkeep
 - PyPI: https://pypi.org/project/lawkeep/
-- Guides: https://lawkeep.github.io/lawkeep/guide/developer.md, https://lawkeep.github.io/lawkeep/guide/non-technical.md, https://lawkeep.github.io/lawkeep/guide/recipes.md
+- Guides: https://lawkeep.github.io/lawkeep/guides/developer-workflow.md, https://lawkeep.github.io/lawkeep/guides/talking-to-your-agent.md, https://lawkeep.github.io/lawkeep/guides/ci.md, https://lawkeep.github.io/lawkeep/writing-laws/recipes.md
+- Onboarding guide for contributors: https://lawkeep.github.io/lawkeep/contributing/onboarding.html (Markdown: https://lawkeep.github.io/lawkeep/contributing/onboarding.md)
 - Architecture (code contract): https://lawkeep.github.io/lawkeep/ARCHITECTURE.md · Plan and decisions: https://lawkeep.github.io/lawkeep/PLAN.md
 - Issues: https://github.com/lawkeep/lawkeep/issues · Discussions: https://github.com/lawkeep/lawkeep/discussions · Security: https://github.com/lawkeep/lawkeep/blob/main/SECURITY.md

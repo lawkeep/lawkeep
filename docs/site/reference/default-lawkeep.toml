@@ -1,0 +1,29 @@
+# lawkeep settings. See https://github.com/lawkeep/lawkeep
+# This file is part of your laws: changing it outside lawkeep is flagged as an unrecorded law change.
+
+[permissions]
+# What a coding agent may do to your laws without asking you first.
+# "auto" = go ahead and tell me; "ask" = wait for my yes.
+add_law       = "auto"   # add a new law (stricter)
+add_example   = "auto"   # add an example or a saved failing case (stricter)
+rename_target = "auto"   # update a law after a rename, when lawkeep confirms the meaning is the same
+change_law    = "ask"    # change what a law checks
+weaken_law    = "ask"    # loosen, delete or skip a law, or try fewer cases (always "ask")
+
+[check]
+profile = "pr"
+
+[check.pr]               # everyday runs and pull requests: the same code always gets the same verdict
+examples    = 200
+derandomize = true
+
+[check.deep]             # nightly or on demand: a deeper random search
+examples    = 2000
+derandomize = false
+
+[project]
+# source = ["src"]   # default: "src" if it exists, else the project folder
+
+[agent]                  # the coding agent `lawkeep draft` starts in a separate session
+name = "claude-code"
+# command = "..."        # override the launch command; {prompt} is replaced by the request

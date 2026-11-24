@@ -1,4 +1,5 @@
-"""The LLM docs (docs/llms.txt, docs/llms-full.txt, docs/index.md) are generated and up to date.
+"""The generated docs are up to date: the LLM docs (docs/llms.txt, docs/llms-full.txt,
+docs/onboarding.md) and the generated pages of the docs website (docs/site/reference/).
 
 They are built by scripts/build_llms_docs.py from the CLI parsers, action.yml, the agent
 instructions template, the report models and the docs. When this test fails, run
