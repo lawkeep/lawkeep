@@ -59,10 +59,14 @@ dev = [
     "tomli>=2.0",
 ]
 docs = [
-    "furo>=2025.9.25",
-    "myst-parser>=4.0",
-    "sphinx>=8.1",
-    "sphinx-copybutton>=0.5.2",
+    # The docs website (docs/site/) is built on Python 3.12 only. The marker keeps these out of the
+    # 3.10 resolution, where soupsieve (via furo -> beautifulsoup4) has no fixed release
+    # (GHSA-mmhr-3c5m-f64f and GHSA-6655-6qjp-jx7x are fixed in 4.0, which needs Python 3.11.5+).
+    "furo>=2025.9.25; python_full_version >= '3.11.5'",
+    "myst-parser>=4.0; python_full_version >= '3.11.5'",
+    "soupsieve>=4.0; python_full_version >= '3.11.5'",
+    "sphinx>=8.1; python_full_version >= '3.11.5'",
+    "sphinx-copybutton>=0.5.2; python_full_version >= '3.11.5'",
 ]
 
 [build-system]

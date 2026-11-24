@@ -30,6 +30,9 @@ URL (it is not a Sphinx page); use colon fences (`:::{note}`) for admonitions; n
 generated `reference/commands.md`; compare other claims with `lawkeep <cmd> --help`,
 `docs/ARCHITECTURE.md` and the adapters' docstrings.
 
+The `docs` dependency group carries the marker `python_full_version >= '3.11.5'` (soupsieve, pulled in by
+furo, has no fixed release for 3.10; dependency review fails otherwise). Build the site on 3.12.
+
 Build and check:
 
 ```bash
