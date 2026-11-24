@@ -14,7 +14,7 @@
 #
 #   - uses: actions/checkout@v4
 #     with: { fetch-depth: 0 }          # the protection report diffs against the base branch
-#   - uses: lawkeep/lawkeep@v0          # (this action)
+#   - uses: lawkeep/lawkeep@v0          # (this action; newest 0.x release, or pin @v0.1.0)
 #     with:
 #       fail-on-broken-laws: "false"
 #

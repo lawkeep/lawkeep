@@ -23,7 +23,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # the protection report compares with the base branch
-      # TODO: pin to a released tag or commit SHA once lawkeep v0.1 is published.
+      # @v0 follows the newest 0.x release (it gets fixes). Pin an exact release such as @v0.1.0,
+      # or a commit SHA, if you want the action to change only when you change this line.
       - uses: lawkeep/lawkeep@v0
         with:
           # Pull requests and pushes: fixed examples (same code, same verdict).

@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # the reports compare against the pull request's base commit
-      - uses: lawkeep/lawkeep@v0 # pin a release tag once lawkeep v0.1 is published
+      - uses: lawkeep/lawkeep@v0 # newest 0.x release; pin @v0.1.0 (or a SHA) for an exact one
         with:
           # working-directory: "."       # the folder with lawkeep.toml
           # python-version: "3.12"

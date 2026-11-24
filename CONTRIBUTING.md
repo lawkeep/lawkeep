@@ -108,6 +108,7 @@ read.
 | Version | [Semantic Versioning](https://semver.org/) written as [PEP 440](https://peps.python.org/pep-0440/) | `0.2.0`, `0.2.0a1`, `0.2.0rc1`, `1.0.0` |
 | Where it lives | `__version__` in `src/lawkeep/__init__.py` (single source) | `__version__ = "0.2.0"` |
 | Git tag | annotated, `v` + version, on a `main` commit | `git tag -a v0.2.0 -m "lawkeep 0.2.0"` |
+| Moving major tag | `v<major>`, moved by `release.yml` to each final release (not `a`/`b`/`rc`) | `v0` → the newest `v0.x.y` |
 | GitHub release | created by `release.yml`, title `lawkeep v<version>`, notes from `CHANGELOG.md` | `lawkeep v0.2.0` |
 | PyPI | distribution, import and command are all `lawkeep` | `pip install lawkeep` |
 | Changelog | [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/): `## [Unreleased]`, then `## [x.y.z] - YYYY-MM-DD` with `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security` | `## [0.2.0] - 2027-01-15` |
@@ -122,10 +123,16 @@ for fixes only. Pre-releases (`a`, `b`, `rc`) need `pip install --pre`.
    scripts/build_llms_docs.py` (the LLM docs name the version). Merge it.
 2. `git tag -a v0.2.0 -m "lawkeep 0.2.0" && git push origin v0.2.0`.
 3. `release.yml` runs every check, verifies the tag equals `__version__`, builds, publishes to
-   PyPI with trusted publishing (environment `pypi`, no token), and creates the GitHub release.
+   PyPI with trusted publishing (environment `pypi`, no token), creates the GitHub release and,
+   for a final release that is the newest of its major version, moves the major tag (`v0`) to it.
 
-Never reuse or move a published tag: PyPI never accepts the same version twice. A bad release is
-fixed by a new patch version (and, if needed, yanking the bad one on PyPI).
+Never reuse or move a published version tag: PyPI never accepts the same version twice. A bad
+release is fixed by a new patch version (and, if needed, yanking the bad one on PyPI).
+
+The one tag that moves is the major tag `v0` (later `v1`, ...), which only `release.yml` moves.
+It lets users write `uses: lawkeep/lawkeep@v0` and get every 0.x release, or pin `@v0.1.0` (or a
+commit SHA) to stay on one. `release.yml` starts only for tags with three version parts
+(such as `v0.2.0`), so pushing `v0` never starts a release.
 
 ## Other names
 

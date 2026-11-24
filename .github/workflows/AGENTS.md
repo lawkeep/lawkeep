@@ -6,7 +6,7 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   the generated-docs drift check `scripts/build_llms_docs.py --check` (the `lint` job; pyright's
   version comes from `uv.lock` through `uv sync --locked`), the docs website build (job
   `docs site`: `uv sync --locked --group docs`, `sphinx-build -W --keep-going`, then a
-  `linkcheck` step with `continue-on-error`; not a required check unless added to the ruleset),
+  `linkcheck` step with `continue-on-error`; a required check on `main`),
   both examples through
   `lawkeep check`, each planted bug failing the gate, and a self-test of `action.yml`.
 
@@ -78,4 +78,4 @@ These run only on GitHub; there is no local test for them (`uv run pre-commit ru
 
 ## release.yml
 
-Publishes lawkeep to PyPI when a `v*` tag is pushed: lint, pyright, full tests, tag must equal `lawkeep.__version__`, `uv build`, `twine check`, then upload with PyPI trusted publishing (environment `pypi`, no token) and a GitHub release. One-time PyPI setup: project lawkeep → Publishing → GitHub publisher (owner `lawkeep`, repo `lawkeep`, workflow `release.yml`, environment `pypi`). To release: bump `__version__`, add a `CHANGELOG.md` entry, commit, tag `v<version>`, push the tag.
+Publishes lawkeep to PyPI when a full version tag is pushed (trigger `v*.*.*`, so never the moving `v0`): lint, pyright, full tests, tag must equal `lawkeep.__version__`, `uv build`, `twine check`, then upload with PyPI trusted publishing (environment `pypi`, no token) and a GitHub release. Last, job `move major tag` (`contents: write`) force-moves the annotated tag `v<major>` ("lawkeep v0 (moving major tag; currently v0.x.y)") to the released commit, only for a final `X.Y.Z` release that is the newest of its major version; it does nothing when the tag is already there (idempotent). Users' `uses: lawkeep/lawkeep@v0` resolves through that tag. One-time PyPI setup: project lawkeep → Publishing → GitHub publisher (owner `lawkeep`, repo `lawkeep`, workflow `release.yml`, environment `pypi`). To release: bump `__version__`, add a `CHANGELOG.md` entry, commit, tag `v<version>`, push the tag.

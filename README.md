@@ -210,13 +210,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: lawkeep/lawkeep@v0.1.0
+      - uses: lawkeep/lawkeep@v0   # newest 0.x release; or pin an exact one: @v0.1.0
 ```
 
 Full templates (pull requests and a nightly deep search) are in
 [.github/workflows/templates/](.github/workflows/templates/); see
-[CI and the GitHub Action](https://lawkeep.github.io/lawkeep/guides/ci.html). (The workflow `lawkeep init --ci` writes in 0.1.0
-uses `@v0`, a tag that is not published yet: pin `@v0.1.0` instead.)
+[CI and the GitHub Action](https://lawkeep.github.io/lawkeep/guides/ci.html). `@v0` is a moving
+tag that always points at the newest 0.x release (it gets fixes); `@v0.1.0` (or a commit SHA)
+never changes.
 
 ## Supported coding agents
 

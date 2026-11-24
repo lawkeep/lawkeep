@@ -8,7 +8,8 @@ Workflows for users to copy into their own repository. GitHub runs only files di
 - `lawkeep-nightly.yml`: nightly `profile: deep`, fails the nightly job (not a pull request) when a
   law fails, and uploads the report and `laws/failing_examples.jsonl`.
 
-Connections: both call `lawkeep/lawkeep@v0` (no release tag exists yet) and may only pass inputs
+Connections: both call `lawkeep/lawkeep@v0` (the moving major tag that `release.yml` moves to
+each final 0.x release; users may pin `@v0.1.0` instead) and may only pass inputs
 defined in the root `action.yml`. `lawkeep init --ci` does NOT copy these: it installs
 `src/lawkeep/adapters/templates/lawkeep-workflow.yml` (one file with PR, push and nightly
 triggers). Keep the two in line when you change the action's inputs.

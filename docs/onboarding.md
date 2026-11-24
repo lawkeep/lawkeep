@@ -661,7 +661,7 @@ The guard is a guard rail, not a wall. Whatever it misses must still show up as 
 | `action.yml` | Composite action: set up Python, install lawkeep and the project, run `lawkeep check --json`, then `lawkeep report` (Markdown first; the protection step runs once), post or update one PR comment. Inputs include `working-directory`, `python-version` (3.12), `lawkeep-spec`, `install-project`, `extra-packages`, `profile`, `base-ref`, `comment`, `fail-on-broken-laws` (false), `fail-on-waiting` (false). Outputs: `result-code`, `verdict`, `summary`, `check-json`, `report-markdown`, `comment-url`. |
 | Blocking | The job fails only on a setup problem (3), unless you opt in. Fork PRs have a read-only token: the report goes to the job summary. |
 | This repository's CI | `.github/workflows/ci.yml`: tests on Python 3.10 / 3.12 / 3.13, ruff, pyright (type check), both examples through the gate, each planted bug failing, a self-test of the action, and the docs website build; on pull requests a first `changes` job skips the jobs whose files the change does not touch (see `.github/workflows/AGENTS.md`). `nightly.yml`: `--profile deep` on the examples. `templates/`: workflows for users to copy (never run here). |
-| Not verified | None of this has run on GitHub yet. `lawkeep/lawkeep@v0` needs a release tag that does not exist yet. |
+| Not verified | None of this has run on GitHub yet. `lawkeep/lawkeep@v0` is a moving tag on the newest final 0.x release (moved by `release.yml`); pin `@v0.1.0` for an exact one. |
 
 ### 5.10 Tools lawkeep wraps
 

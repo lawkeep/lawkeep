@@ -12,5 +12,6 @@
 | `templates/lawkeep.yml` | no (GitHub only runs files directly in this folder) | Copy into your project: checks laws on every pull request and posts one comment. |
 | `templates/lawkeep-nightly.yml` | no | Copy into your project: nightly deep search. |
 
-The templates use `lawkeep/lawkeep@v0`, which works once a release tag exists. Until then,
-point `uses:` at a commit of this repository.
+The templates use `lawkeep/lawkeep@v0`: a moving tag that `release.yml` moves to every final
+0.x release, so it picks up fixes. To change only when you say so, pin an exact release
+(`@v0.1.0`) or a commit SHA.

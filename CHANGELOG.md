@@ -56,8 +56,14 @@ versions). While lawkeep is 0.x, a minor version may change behaviour.
   Markdown copies of the new pages, with the onboarding guide under "Optional".
 - `docs/guide/` (developer guide, non-technical guide, law recipes) was folded into the website and
   removed; its Markdown copies under `/guide/` are no longer published.
-- README: the status now says lawkeep 0.1.0 is released on PyPI (Alpha), links to the docs website
-  and pins the GitHub Action example to `@v0.1.0` (the `@v0` tag does not exist yet).
+- README: the status now says lawkeep 0.1.0 is released on PyPI (Alpha) and links to the docs
+  website.
+- GitHub Action versions: `lawkeep/lawkeep@v0` is now a moving tag on the newest final 0.x release
+  (it gets fixes); pin `@v0.1.0` or a commit SHA for an exact version. The release workflow moves
+  `v0` after each final release (never to a, b or rc pre-releases, never backwards) and starts
+  only for full version tags (such as `v0.2.0`), so the `v0` tag never starts a release. The docs, the
+  templates and the workflow `lawkeep init --ci` writes all use `@v0`; the "pin a release tag" TODO
+  in that workflow is gone.
 
 ### Fixed
 

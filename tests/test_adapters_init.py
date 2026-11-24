@@ -97,7 +97,7 @@ def test_init_all_agents_and_ci(tmp_path, capsys):
     ):
         assert (root / rel).is_file(), rel
     wf = (root / ".github" / "workflows" / "lawkeep.yml").read_text()
-    assert "uses: lawkeep/lawkeep@v0" in wf and "TODO" in wf
+    assert "uses: lawkeep/lawkeep@v0\n" in wf and "TODO" not in wf
     assert data["data"]["agents"] == ["claude-code", "codex", "cursor", "copilot"]
     assert data["data"]["ci_workflow_added"] is True
 

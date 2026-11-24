@@ -14,12 +14,8 @@ profile, runs a nightly deeper search with the `deep` profile, and comments only
 The workflow file is part of your laws (fingerprinted in `laws.lock`), so a change to it is recorded
 like any other law change.
 
-:::{important}
-In lawkeep 0.1.0 the workflow written by `lawkeep init --ci` uses `lawkeep/lawkeep@v0`, but only the
-tag `v0.1.0` exists so far. Until a `v0` tag is published, change that line to
-`uses: lawkeep/lawkeep@v0.1.0` (or a commit SHA) in your copy, and record the edit with
-`lawkeep approve --accept-unrecorded`.
-:::
+The workflow uses `lawkeep/lawkeep@v0`; see
+[Which version of the action](#which-version-of-the-action) to pin an exact release instead.
 
 ## By hand
 
@@ -37,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0     # the protection report compares with the base branch
-      - uses: lawkeep/lawkeep@v0.1.0
+      - uses: lawkeep/lawkeep@v0
 ```
 
 The action installs Python, lawkeep and your project (from `pyproject.toml` / `setup.py`, else
@@ -50,7 +46,7 @@ By default the job fails only on a setup problem (result code 3). Failing laws a
 are reported in the comment but do not fail the job. To make them fail it:
 
 ```yaml
-      - uses: lawkeep/lawkeep@v0.1.0
+      - uses: lawkeep/lawkeep@v0
         with:
           fail-on-broken-laws: "true"   # fail on result code 1
           fail-on-waiting: "true"       # fail on result code 2 (e.g. an unrecorded law change)
@@ -90,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: lawkeep
-        uses: lawkeep/lawkeep@v0.1.0
+        uses: lawkeep/lawkeep@v0
         with:
           profile: deep
           comment: "false"
@@ -109,6 +105,19 @@ When it finds a failure, the uploaded report shows the simplest failing input. A
 to fix the code and save that input as an example, so every later check retries it. Both templates
 are in the repository under
 [`.github/workflows/templates/`](https://github.com/lawkeep/lawkeep/tree/main/.github/workflows/templates).
+
+## Which version of the action
+
+| `uses:` | What you get |
+| --- | --- |
+| `lawkeep/lawkeep@v0` | The newest 0.x release. The `v0` tag is moved to each new final release (not to `a`, `b` or `rc` pre-releases), so you get fixes without editing the workflow. Used by `lawkeep init --ci` and the templates. |
+| `lawkeep/lawkeep@v0.1.0` | Exactly that release; it never changes. |
+| `lawkeep/lawkeep@<commit SHA>` | Exactly that commit; the safest choice if your team pins every action. |
+
+While lawkeep is 0.x, a minor release (0.2.0) may change behaviour, and `@v0` moves to it too:
+pin an exact release if you want to decide when to upgrade. To change the line in a workflow
+written by `lawkeep init --ci`, edit it and record the change with
+`lawkeep approve --accept-unrecorded` (the workflow is fingerprinted like a law).
 
 ## Inputs and outputs
 

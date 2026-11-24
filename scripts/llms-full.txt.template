@@ -162,10 +162,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }   # the protection report diffs against the base branch
-      - uses: lawkeep/lawkeep@v0.1.0
+      - uses: lawkeep/lawkeep@v0   # newest 0.x release; or pin an exact one: @v0.1.0
 ```
 
-Note: the workflow written by `lawkeep init --ci` in 0.1.0 uses `lawkeep/lawkeep@v0`, a tag that does not exist yet; pin `@v0.1.0` (or a commit SHA) instead.
+Versions: `lawkeep/lawkeep@v0` is a moving tag that points at the newest final 0.x release (moved by the release workflow, never to a, b or rc pre-releases), so it gets fixes; `@v0.1.0` or a commit SHA never changes. `lawkeep init --ci` writes `@v0`.
 
 {{action}}
 
