@@ -1,10 +1,10 @@
 # laws.lock - written by lawkeep; do not edit by hand.
 version = 1
-generated_at = "2026-11-22T10:20:39.937575Z"
-lawkeep_version = "0.1.0.dev0"
+generated_at = "2026-11-24T09:17:17.512585Z"
+lawkeep_version = "0.1.0"
 
 [files]
-".github/workflows/lawkeep.yml" = "sha256:db555703edd4a3ab8fb1cd2497f7cde57a5a6dd9c0d62fc49f9032504da09c7c"
+".github/workflows/lawkeep.yml" = "sha256:f12dabe50f5f4a92bae0e4079752ba7d342aa4c6a9bc8d6a0f00b7518faaeb84"
 "lawkeep.toml" = "sha256:3c1414b842b8092bb7f852200504b73bf8781b3c48a275c75ad95bcb30a5a2ec"
 "laws/exitcodes_empty_is_all_hold.py" = "sha256:52167f3c8eb64f6520278a7699f7392c9862f9c6c41134116a37a01a3786515f"
 "laws/exitcodes_order_independent.py" = "sha256:6940dc1cb194e80050cd19c739d43646e00fb9c6e5ff87dae4ae60d79e6174a5"
@@ -31,5 +31,5 @@ lines = 0
 prefix_sha256 = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 [append_only."laws/history.jsonl"]
-lines = 7
-prefix_sha256 = "sha256:8249d993588006b665500e529cf5a05b361d0ff8fd1f1937f7ce1195fd2dae98"
+lines = 8
+prefix_sha256 = "sha256:2bbf02610736dfce03166fb2effdef3bcb25f4a6de587f6170af4ed5898cd3c5"
