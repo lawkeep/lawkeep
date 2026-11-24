@@ -20,7 +20,7 @@ jobs:
   laws:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the protection report compares with the base branch
 # lawkeep's own repository: use the action and package from this checkout.

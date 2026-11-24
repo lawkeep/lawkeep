@@ -24,8 +24,8 @@ jobs:
       matrix:
         python-version: ["3.10", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
@@ -36,8 +36,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked --all-extras  # --locked: fail if uv.lock is out of date
       - run: uv run ruff check src tests scripts
       - run: uv run ruff format --check src tests scripts
@@ -55,8 +55,8 @@ jobs:
     name: docs site
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked --group docs
       # The public docs website (docs/site/, Sphinx + Furo + MyST): warnings are errors, so a
       # broken link between pages or a bad directive fails the pull request.
@@ -71,8 +71,8 @@ jobs:
     name: example projects through the gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - name: Both examples pass lawkeep check
         run: |
@@ -112,7 +112,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Run the action from this checkout
