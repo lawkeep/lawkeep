@@ -134,6 +134,8 @@ It lets users write `uses: lawkeep/lawkeep@v0` and get every 0.x release, or pin
 commit SHA) to stay on one. `release.yml` starts only for tags with three version parts
 (such as `v0.2.0`), so pushing `v0` never starts a release.
 
+GitHub reads a tag push's workflow from the tagged commit, so pushing `v0` by hand onto a commit older than that rule (such as the `v0.1.0` commit) does start that commit's old release workflow: cancel it (it would stop at the tag-equals-version check anyway, before publishing). Moves made by `release.yml` itself start nothing (pushes with the workflow's token never start workflows).
+
 ## Other names
 
 | Thing | Convention |
