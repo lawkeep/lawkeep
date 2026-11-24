@@ -19,6 +19,8 @@ unrecorded first, then the "approve all recommended" batch when 2+ items are
 `hook session-start/-end` add the waiting count (`waiting.collect`) and `person_present`
 (`presence.detect`); `propose` sets `next_step` ("Parked as h-… Continue …" when nobody is
 there). Raise `errors.SetupError(msg, hint=...)` for setup problems (exit 3).
+After changing a command's options or `HELP`, run `uv run python scripts/build_llms_docs.py`:
+`docs/llms-full.txt` lists every option from the live parsers (CI fails when it is stale).
 Show `cfg.warnings`. Never prompt in `--json` mode or without a terminal: return 2 (waiting) instead.
 
 Gotchas: `approve` is the only command that records a person's yes; `propose` refuses while

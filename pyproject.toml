@@ -84,9 +84,9 @@ ignore = ["E501"]  # the formatter wraps code; long plain-English strings may st
 
 [tool.pyright]
 # Static type checking (docs/PLAN.md -> Decisions, 2026-11-23). The package is checked in strict
-# mode, the tests in standard mode. pythonVersion is the oldest Python lawkeep supports, so typing
+# mode, the tests and scripts/ in standard mode. pythonVersion is the oldest Python lawkeep supports, so typing
 # that only works on newer versions is reported.
-include = ["src/lawkeep", "tests"]
+include = ["src/lawkeep", "tests", "scripts"]
 exclude = [
     "**/__pycache__",
     "**/.hypothesis",

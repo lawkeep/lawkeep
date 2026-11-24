@@ -10,3 +10,8 @@ outputs are illustrative; run the commands for the exact wording.
 | [Law recipes](recipes.md) | Anyone writing or reviewing laws: patterns that make laws strong, and traps to avoid. |
 
 The design and the reasons behind it are in [docs/PLAN.md](../PLAN.md).
+
+For LLMs and coding agents: [llms.txt](https://lawkeep.github.io/lawkeep/llms.txt) lists
+Markdown versions of these pages, and [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt)
+holds the whole reference (every command and option, result codes, `--json` fields, file formats,
+the rules for agents) in one file. Both are generated from the source.

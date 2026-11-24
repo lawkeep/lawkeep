@@ -38,6 +38,7 @@ Context for any coding agent or tool working in this repository (Claude Code, Co
   - Needs people: the private pilot on two real modules, the non-technical tester, and the ~30-task evaluation with and without lawkeep (no task set or runner exists yet).
 - **lawkeep checks itself (decided 2026-11-22):** this repository uses lawkeep on its own code. `lawkeep init --agent claude-code` set up `lawkeep.toml`, `laws.lock`, `laws/`, `.mcp.json`, `.claude/settings.json` (guard hook + "ask" rule for `lawkeep approve`), `.git/hooks/pre-commit`, `.github/workflows/lawkeep.yml` (uses the local action, `uses: ./`, with `lawkeep-spec: "."`) and the lawkeep section at the end of this file. Three laws about `lawkeep.exitcodes` are approved by the maintainer. Keep these files; change laws only through lawkeep.
 - Public repository set up for contributors (2026-11-23, see `docs/PLAN.md` → Decisions): issue forms, Code of Conduct, `CODEOWNERS`, `.editorconfig`, pre-commit hooks, README badges, dependency-review / PR-title / Scorecard / Pages workflows, docs site at https://lawkeep.github.io/lawkeep/, labels, roadmap milestones, issues for the v0.2 roadmap and the known gaps (some marked `good first issue`), Discussions, security features and a ruleset on `main`. Open work is tracked in GitHub issues from now on.
+- LLM-friendly docs (2026-11-24, see `docs/PLAN.md` → Decisions): `docs/llms.txt`, `docs/llms-full.txt` and `docs/index.md` follow the llms.txt convention and are served at the docs site root (https://lawkeep.github.io/lawkeep/llms.txt, `/llms-full.txt`, `/index.md`, plus Markdown copies of the guides, README, PLAN, ARCHITECTURE). They are **generated** by `scripts/build_llms_docs.py` from the templates in `scripts/`, the live CLI parsers, `action.yml`, the agent snippet, the report models and quoted doc sections; never edit them by hand. CI's `lint` job and `tests/test_docs_llms.py` run `--check` and fail when they are out of date (so changing an option, the snippet, `action.yml`, `docs/onboarding.html` or a quoted heading means rerunning the script). `scripts/` is ruff- and pyright-checked (standard mode). Not done: a `lawkeep` command that prints the reference (idea only).
 - Next steps: add the PyPI trusted publisher, then try each agent by hand (issues exist for Codex, Cursor and Copilot).
 - The online copy of the plan (Claude Doc) has not yet been updated with the 2026-11-20/21/22 decisions.
 - Name reserved: GitHub org `lawkeep`, PyPI `lawkeep` 0.0.1 and npm `lawkeep` 0.0.1 (placeholders).
@@ -48,8 +49,9 @@ Context for any coding agent or tool working in this repository (Claude Code, Co
 ```bash
 uv sync --all-extras                                                 # install lawkeep + dev tools
 uv run pytest -q                                                     # whole suite, about 6-7 minutes
-uv run ruff check src tests && uv run ruff format --check src tests  # lint and format
+uv run ruff check src tests scripts && uv run ruff format --check src tests scripts  # lint and format
 uv run pyright                                                       # type check: must report 0 errors
+uv run python scripts/build_llms_docs.py                             # rebuild the LLM docs (--check in CI)
 uv run lawkeep check                                                 # lawkeep's own laws: ALL LAWS HOLD
 ```
 

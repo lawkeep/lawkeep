@@ -255,7 +255,7 @@ to [Discussions](https://github.com/lawkeep/lawkeep/discussions). Security issue
 ```bash
 uv sync --all-extras                                          # install lawkeep + dev tools
 uv run pytest -q                                              # the whole suite (~9 minutes)
-uv run ruff check src tests && uv run ruff format --check src tests   # lint and format
+uv run ruff check src tests scripts && uv run ruff format --check src tests scripts   # lint and format
 uv run pyright                                                # type check
 uv run lawkeep check                                          # lawkeep checks its own laws
 ```
@@ -272,6 +272,10 @@ uv run lawkeep check                                          # lawkeep checks i
 
 - **Docs site: [lawkeep.github.io/lawkeep](https://lawkeep.github.io/lawkeep/)** (the onboarding
   guide: concepts, every command, architecture).
+- **For LLMs and coding agents:** [llms.txt](https://lawkeep.github.io/lawkeep/llms.txt) (index,
+  [llmstxt.org](https://llmstxt.org) convention) and
+  [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt) (the whole reference in one
+  Markdown file), generated from the source by `scripts/build_llms_docs.py`.
 - [docs/PLAN.md](docs/PLAN.md): design, principles, roadmap, risks, decisions.
 - [docs/guide/](docs/guide/): guides for non-technical users and developers, and law recipes.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): module contract for contributors.

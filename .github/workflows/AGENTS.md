@@ -2,7 +2,8 @@
 
 CI for the lawkeep repository itself (see `README.md` here for the table).
 
-- `ci.yml`: tests on Python 3.10 / 3.12 / 3.13, ruff and pyright (the `lint` job; pyright's
+- `ci.yml`: tests on Python 3.10 / 3.12 / 3.13, ruff (on `src`, `tests`, `scripts`), pyright and
+  the LLM-docs drift check `scripts/build_llms_docs.py --check` (the `lint` job; pyright's
   version comes from `uv.lock` through `uv sync --locked`), both examples through
   `lawkeep check`, each planted bug failing the gate, and a self-test of `action.yml`.
 - `lawkeep.yml`: lawkeep checking its own repository (the root `laws/`, three laws about
@@ -18,8 +19,12 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   tab and the public badge. With `publish_results: true` the job may only use the actions
   Scorecard allows and the workflow may not set top-level `env`/`defaults`.
 - `pages.yml`: builds the docs site (`docs/onboarding.html` as `index.html`, plus project links
-  injected after the sidebar's `<div class="brand">` line; the build stops if that line changes)
-  and deploys it to https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch it.
+  injected after the sidebar's `<div class="brand">` line; the build stops if that line changes),
+  copies the generated LLM docs (`docs/llms.txt`, `docs/llms-full.txt`, `docs/index.md`, also as
+  `onboarding.html.md`) and Markdown copies of the guides (`guide/`), PLAN, ARCHITECTURE,
+  OUTPUT-STYLE, README, CHANGELOG and CONTRIBUTING to the site root, and deploys it to
+  https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch `docs/`, those root files or
+  the workflow.
   Pages must be set to "GitHub Actions" in the repository settings.
 - The required status checks on `main` (ruleset) use the job names as GitHub shows them: renaming
   a job in `ci.yml`, `pr-title.yml` or `dependency-review.yml` means updating the ruleset too.

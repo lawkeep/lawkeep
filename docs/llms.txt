@@ -1,0 +1,46 @@
+# lawkeep
+
+> lawkeep is an open-source layer for safe AI-assisted coding (Python 3.10+, Apache-2.0). People decide on a short list of *laws*: rules the code must obey for every input, each one plain-English sentence plus an executable check (a pytest + Hypothesis test marked `@law`). Coding agents write and maintain the checks; every law change is permissioned, recorded and shown; one gate, `lawkeep check`, says `ALL LAWS HOLD` or `SOME LAWS FAIL`.
+
+This file follows the llms.txt convention (https://llmstxt.org). It describes lawkeep 0.1.0 and is generated from the source by `scripts/build_llms_docs.py` in https://github.com/lawkeep/lawkeep. For everything in one file, read [llms-full.txt](https://lawkeep.github.io/lawkeep/llms-full.txt).
+
+Key facts:
+
+- **The promise:** every law runs on every `lawkeep check`; the AI never changes a law silently (every change is recorded in `laws/history.jsonl` and fingerprinted in `laws.lock`; edits made outside lawkeep are flagged); weakening a law needs a person's yes; weak laws get flagged (`lawkeep strength` plants bugs). lawkeep does not promise the code is correct beyond its laws, or that an agent *cannot* get around it. Nothing below level L4 (machine-checked proof, not in v0.1) is called "proven".
+- **Install:** `uv add --dev lawkeep` (or `pip install lawkeep`); extras `lawkeep[mcp]` (MCP server), `lawkeep[deep]` (CrossHair, experimental). Then `lawkeep init --agent claude-code` (or `codex`, `cursor`, `copilot`, `all`, `other`).
+- **Commands:** `init`, `draft`, `approve`, `check`, `strength`, `propose`, `report`, `hook`, `mcp`. Every command takes `--json` (exactly one JSON document on stdout) and `--root PATH`.
+- **Result codes** (same for every command):
+
+| Code | Verdict | Meaning |
+| --- | --- | --- |
+| 0 | ALL LAWS HOLD | all laws hold (other commands: done) |
+| 1 | SOME LAWS FAIL | some laws fail (or a law could not run) |
+| 2 | WAITING FOR YOUR DECISION | waiting for a person's decision (unrecorded law change, side door, waiting proposal or draft) |
+| 3 | SETUP PROBLEM | setup problem (no project, bad lawkeep.toml, missing tool, bad usage, crash) |
+
+When several apply, the most important wins: 3 > 1 > 2 > 0 (`lawkeep.exitcodes.combine`).
+
+Rules for coding agents working in a project that uses lawkeep (full text in llms-full.txt, section "Rules for coding agents"):
+
+1. Run `lawkeep check` (or the MCP `check` tool) before finishing any task; `--json` for machine-readable output.
+2. When a law fails, fix the code, not the law. Each failure comes with its simplest failing input.
+3. Never edit `laws/`, `laws.lock` or `lawkeep.toml` directly, and never add `conftest.py`, `sitecustomize.py`, `.pth` files, skip/xfail markers or special cases for the failing input. To change a law: write the new version under `laws/drafts/` and run `lawkeep propose <LAW_ID> --file laws/drafts/<file>.py --reason "<why>"`.
+4. If a law conflicts with the task and a person is there, stop and ask (a successful outcome). If nobody is there (`person_present: false` in `check --json`): park the change with `lawkeep propose`, never work around the law, keep going with everything else, and end with three lists: done / waiting for the person (`h-...` ids) / not done because blocked.
+5. Never run `lawkeep approve` unless the person asks you to. Show the person `lawkeep report` at the end of the session.
+
+## Docs
+
+- [Full reference for LLMs](https://lawkeep.github.io/lawkeep/llms-full.txt): everything in one Markdown file: concepts, quick start for people and agents, every command with its exact options, result codes, the `--json` schema, file formats, the `@law` API, the rules for agents, MCP tools, the GitHub Action, known limits
+- [Onboarding guide](https://lawkeep.github.io/lawkeep/index.md): the docs site's home page as Markdown: concepts with a running example, every command, architecture, repository tour, data formats, safety model, glossary
+- [Developer guide](https://lawkeep.github.io/lawkeep/guide/developer.md): commands, `lawkeep.toml`, files on disk, how `check` runs, permissions and directions, long runs without a person, writing laws, CI
+- [Using lawkeep by talking to your coding agent](https://lawkeep.github.io/lawkeep/guide/non-technical.md): a week with lawkeep without typing commands or reading code
+- [Law recipes](https://lawkeep.github.io/lawkeep/guide/recipes.md): patterns that make laws strong, and traps to avoid
+
+## Optional
+
+- [README](https://lawkeep.github.io/lawkeep/README.md): project overview, the promise, known limits, quick starts
+- [Architecture](https://lawkeep.github.io/lawkeep/ARCHITECTURE.md): the code contract for contributors: data formats, module signatures, commands, call graph
+- [Plan](https://lawkeep.github.io/lawkeep/PLAN.md): design source of truth: principles, roadmap, risks, decisions, open questions
+- [Output style](https://lawkeep.github.io/lawkeep/OUTPUT-STYLE.md): how every command talks to people (words, layout)
+- [Changelog](https://lawkeep.github.io/lawkeep/CHANGELOG.md): changes per release
+- [Contributing](https://lawkeep.github.io/lawkeep/CONTRIBUTING.md): branch names, Conventional Commits, pull requests, releases

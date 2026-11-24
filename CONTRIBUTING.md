@@ -96,7 +96,8 @@ for fixes only. Pre-releases (`a`, `b`, `rc`) need `pip install --pre`.
 **To release** (from an up-to-date `main`):
 
 1. Open `chore/release-0.2.0`: bump `__version__`, move `Unreleased` in `CHANGELOG.md` to
-   `## [0.2.0] - <date>`, update the compare links. Merge it.
+   `## [0.2.0] - <date>`, update the compare links, and run `uv run python
+   scripts/build_llms_docs.py` (the LLM docs name the version). Merge it.
 2. `git tag -a v0.2.0 -m "lawkeep 0.2.0" && git push origin v0.2.0`.
 3. `release.yml` runs every check, verifies the tag equals `__version__`, builds, publishes to
    PyPI with trusted publishing (environment `pypi`, no token), and creates the GitHub release.
@@ -119,8 +120,9 @@ fixed by a new patch version (and, if needed, yanking the bad one on PyPI).
 
 ```bash
 uv sync --all-extras
-uv run ruff check src tests && uv run ruff format --check src tests
+uv run ruff check src tests scripts && uv run ruff format --check src tests scripts
 uv run pyright                 # must report 0 errors
+uv run python scripts/build_llms_docs.py --check   # LLM docs up to date (drop --check to rebuild)
 uv run pytest -q               # about 9 minutes
 uv run lawkeep check           # lawkeep's own laws: ALL LAWS HOLD
 ```

@@ -20,6 +20,8 @@ are read with `adapters.base.template(name)` (`importlib.resources`), by name on
 
 Gotchas: wording here is user-facing; keep it plain English and honest (rule 3 in the root
 `AGENTS.md`), and keep commands and result codes in line with `docs/ARCHITECTURE.md` section 7.
-This AGENTS.md is never installed (only named files are read).
+This AGENTS.md is never installed (only named files are read). `agents_snippet.md` is also
+quoted in the generated `docs/llms-full.txt`: after changing it run
+`uv run python scripts/build_llms_docs.py` (CI fails otherwise).
 
 Test: `uv run pytest tests/test_adapters_init.py tests/test_adapters_install.py`.

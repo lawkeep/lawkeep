@@ -1,0 +1,948 @@
+# lawkeep: full reference for LLMs and coding agents
+
+> lawkeep is an open-source layer for safe AI-assisted coding (Python 3.10+, Apache-2.0, on PyPI as `lawkeep`). People decide on *laws*: rules the code must obey for every input, each one plain-English sentence plus an executable check. Coding agents write and maintain the checks. Every law change is permissioned, recorded and shown, and one gate, `lawkeep check`, says `ALL LAWS HOLD` or `SOME LAWS FAIL`.
+
+This file describes lawkeep 0.1.0. It is generated from lawkeep's source (the CLI parsers, `action.yml`, the agent instructions template, the report models and the docs) by `scripts/build_llms_docs.py` in https://github.com/lawkeep/lawkeep; do not edit it by hand. Index of LLM-ready pages: https://lawkeep.github.io/lawkeep/llms.txt. Status: alpha; commands and file formats may still change.
+
+Contents: 1 What lawkeep is · 2 Concepts · 3 Quick start · 4 Rules for coding agents · 5 Commands · 6 Result codes · 7 JSON output · 8 Files and formats · 9 Writing laws · 10 Long runs without a person · 11 MCP server · 12 GitHub Action · 13 Known limits · 14 Links
+
+## 1. What lawkeep is
+
+- **Every law runs** on every `lawkeep check` (unless you name single laws with `--law`, and then
+  the result says it was a partial run), against many generated inputs, and every failure comes
+  with the simplest input that breaks it. A law that skips itself while it runs counts as an
+  error, not a pass.
+- **The AI never changes your laws silently.** Every law change is recorded: what changed, which
+  agent changed it, why, and who said yes. A change made by editing files directly is flagged
+  as an unrecorded law change.
+- **Weakening a law needs your yes.** Stricter changes can go ahead automatically if you allow
+  it; loosening, deleting or skipping a law, or trying fewer cases, waits for a person. lawkeep
+  decides the direction from evidence (sample inputs and planted bugs) plus a few code rules;
+  when it cannot tell, it asks.
+- **lawkeep tells you when your laws are too weak** to catch real bugs (it plants bugs and
+  checks whether any law notices). A new law must pass this quick check before it goes in
+  without asking.
+
+What lawkeep does **not** promise: that your code is correct beyond what your laws say, or that
+an agent *cannot* get around it. lawkeep records and shows; it does not force a review process
+on your team. Nothing in v0.1 is "proven": that word is reserved for machine-checked proofs
+(level L4, planned for v0.5).
+
+## 2. Concepts
+
+- **Law**: one plain-English sentence plus an executable check, kept in `laws/*.py`. Technically a pytest test written with Hypothesis and decorated with `@law("sentence")`. A law says something must be true for *every* input (property-based testing); Hypothesis generates many inputs and shrinks any failure to the **simplest failing example**.
+- **Law id**: the file path inside `laws/` with dots, without `.py`, plus the function name: `laws/refunds.py::refund_is_capped` → `refunds.refund_is_capped`. `@law(..., id="R7")` overrides it. A draft keeps its id when approved.
+- **Input generators** (Hypothesis "strategies"): `from lawkeep import st` is `hypothesis.strategies` plus `st.money()`, `st.percentages()`, `st.non_empty_text()`, `st.ids()` and every generator defined in the project's `laws/strategies.py` (for example `st.charges()`). Names Hypothesis already has (`times`, `dates`, `text`) always mean Hypothesis's version.
+- **Saved failing examples**: every failing input `check` finds is appended to `laws/failing_examples.jsonl` and replayed for that law on every later run, so a bug found once cannot quietly return.
+- **Draft**: a new law a coding agent wrote that nobody approved yet, in `laws/drafts/`. The gate ignores drafts. `lawkeep draft <module> --request "..."` starts a *separate* session of the user's own coding agent (no extra account or API key) that sees the request and function signatures, not the bodies, so the law is less likely to describe a bug.
+- **Proposal**: a requested change to an approved law (or its deletion), made with `lawkeep propose`. lawkeep judges its **direction** by evidence and applies the permission for that direction.
+- **Approval**: a person's yes or no, given with `lawkeep approve`. The person sees the sentence, whether the law holds on today's code, how strong it is, and a table of concrete examples ("charge $40.00, refund $50 → refused → follows the law: yes"); they never have to read code. Approvals record who *claimed* to approve (`approved_by`); one made without a terminal is recorded with `terminal: false` and stays on the waiting list until a person in a terminal confirms or undoes it.
+- **Direction and permissions**: every law change is `stricter` (demands more), `same` (only a consistent rename), `looser` (demands less; deleting, skipping or trying fewer cases is always looser) or `unclear`. lawkeep decides by running old and new versions on the same inputs, deliberately broken function versions and planted bugs, plus code rules (a moved limit in an `assert` is read statically; a change to input generators always asks). `lawkeep.toml` `[permissions]` maps direction to `auto` (go ahead, tell me) or `ask` (wait for a person): `add_law` / `add_example` (stricter, default auto), `rename_target` (same, auto), `change_law` (unclear, ask), `weaken_law` (looser, **always** ask; `auto` is ignored with a warning). Edits the drafting agent of `lawkeep draft` makes to approved files always wait, even when stricter.
+- **Law history and lock**: `laws/history.jsonl` is the append-only record of every law change (what, which agent, why, which permission, who said yes). `laws.lock` holds a SHA-256 fingerprint of every file that is part of the laws: everything in `laws/` (except `laws/drafts/` and the two append-only files, which are protected by line count and prefix hash), `lawkeep.toml` and `.github/workflows/lawkeep.yml`. A fingerprint mismatch the history does not explain is an **unrecorded law change**: `check` returns 2 until it is put back (for example with git) or a person runs `lawkeep approve --accept-unrecorded`.
+- **Side doors**: files that could change results without touching a law: `conftest.py` outside `laws/`, `sitecustomize.py`, `usercustomize.py`, `.pth` files, stray `.pyc` near the laws, skip/xfail markers in laws, hooks in `laws/conftest.py`, weakened Hypothesis settings, and source files under test that import lawkeep/pytest/Hypothesis, read `LAWKEEP_*`/`HYPOTHESIS_*`, raise skips, define comparisons that always return `True`, or shadow a standard-library or installed module. They are flagged as integrity issues (severity `error` makes `check` return at least 2).
+- **Gate**: `lawkeep check`. First an integrity check (no code runs), then every approved law in a fresh, isolated Python process (`python -I -S -B`, only `laws/` is collected, outside `conftest.py` and auto-loaded plugins off, results through a private pipe). A **profile** is a set of gate settings: `pr` (default: up to 200 inputs per law, fixed seed, so the same code always gets the same verdict) and `deep` (2,000 new random inputs per run, for nightly searches). A law that skips itself while running, or `assume()` called from outside `laws/`, is an error, not a pass.
+- **Levels** (the guarantee ladder): `L1` fixed examples only · `L2` Hypothesis property · `L3` CrossHair symbolic backend (experimental, `--deep-check`, needs `lawkeep[deep]`) · `L4` machine-checked proof (reserved, planned for v0.5). Only L4 may be called "proven".
+- **Strength**: `lawkeep strength` grades the laws themselves: a quick check swaps each function a law calls for dumb versions (returns None, 0, its first argument, raises) that a good law should catch; planted bugs (small mutations such as `<` → `<=`, made in memory only; `--full` plants all of them) show which bugs no law notices; it also flags vacuous laws, one-sided laws, weak test data (most inputs thrown away by `assume()`) and public functions no law runs. A new law must pass the quick check before it goes in without asking.
+- **Protection report**: part of `lawkeep report`. For each function changed since a git base it says `protected`, `partly` or `not_protected`, by planting bugs in the changed lines and checking whether a law catches them. Motto: only review what your laws don't protect. It never changes the result code.
+- **Waiting list** (`waiting_for_person`): one count of everything that waits for a person: new drafts, looser/unclear proposals, drafting-agent edits, unrecorded law changes and approvals made without a terminal. Shown in `check`, `report`, the PR comment and the session hooks as "N things wait for your decision — run `lawkeep approve`". It never changes a result code.
+- **Person present**: `person_present` in `check`/`report`/`approve --json` and the session-start hook is lawkeep's guess whether a person is chatting with the agent. Agents use it to choose between stopping to ask (person there) and parking a change (nobody there). It never changes what lawkeep allows. See section 10.
+- **Actors** in the history: `agent:<name>` (`agent:claude-code`, `agent:codex`, `agent:cursor`, `agent:copilot`, `agent:other`), `person:<name>`, or `lawkeep` (automatic).
+
+## 3. Quick start
+
+### For people: just ask your coding agent
+
+You do not need to type commands or read code. Once lawkeep is installed in your project, talk
+to your coding agent (Claude Code, Codex, Cursor, Copilot or another):
+
+- "Set up lawkeep for this project."
+- "Add a law that refunds can never be more than the customer paid."
+- "Show me the laws waiting for my approval." Then answer yes or no to each, after looking at
+  the examples it shows you.
+- "Check the laws." / "Did any law change in this session?"
+- "Which parts of this change are not protected by a law?"
+
+The agent runs the same `lawkeep` commands a developer would and explains the results in plain
+English. If a law blocks what you asked for, a well-behaved agent stops and asks you instead of
+weakening the law; lawkeep treats that as a normal, successful outcome.
+
+**Long runs without you** (overnight, or in CI): the agent **parks and keeps going**. When a law
+blocks it, it proposes the change with its reason (anything that loosens a law waits for you),
+never works around the law or approves anything, finishes everything that does not depend on
+that law, and ends with a summary: done / waiting for you / not done because blocked. In the
+morning, `lawkeep approve` shows **one waiting list** of everything that piled up, grouped and
+counted, with a suggestion for each kind; "N things wait for your decision" also shows at the
+start of the next session, in `lawkeep check`, in `lawkeep report` and in the pull-request
+comment.
+
+The [non-technical guide](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/non-technical.md) walks through a week with lawkeep.
+
+### For developers
+
+```bash
+uv add --dev lawkeep            # or: pip install lawkeep
+lawkeep init --agent claude-code
+lawkeep draft billing.refunds --request "refunds can never exceed the payment"
+lawkeep approve                 # one waiting list: drafts, proposals, unrecorded edits, unconfirmed approvals
+lawkeep check                   # ALL LAWS HOLD / SOME LAWS FAIL
+lawkeep strength                # are the laws strong enough to catch planted bugs?
+lawkeep report --base main      # law changes + which changed functions no law protects
+```
+
+Every command takes `--json` (one JSON document, for agents and scripts) and returns a stable
+result code:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | all laws hold |
+| 1 | some laws fail |
+| 2 | waiting for a person's decision (for example an unrecorded law change, or a weakening proposal) |
+| 3 | setup problem |
+
+What `lawkeep check` prints when a law fails (the billing example with its planted bug,
+plain text as in a CI log, shortened; in a terminal it is in colour):
+
+```
++------------------------------------------------------------------------------+
+| SOME LAWS FAIL                                                               |
+| 3 of 6 laws broke on your current code. Fix the code, not the law.           |
++------------------------------------------------------------------------------+
+
+Law                                                                       Result
+--------------------------------------------------------------------------------
+“Refunding exactly what was paid gives back exactly the payment and the   Fails
+whole card fee”
+“Rounding money gives whole cents and is never off by more than half a    Holds
+cent”
+...
+
++-  This law fails  -----------------------------------------------------------+
+| “Refunding exactly what was paid gives back exactly the payment and the      |
+| whole card fee”                                                              |
+|                                                                              |
+| The input that breaks it: charge: a charge of $0.25 with no discount code    |
+| Why it failed:            The law expected 0.25, but the code gave 0.26.     |
+|                                                                              |
+| What the inputs mean                                                         |
+|   charge: a sample charge that lawkeep made up for testing                   |
+| ...                                                                          |
+| law id refunds.full_refund_gives_back_exact_payment · file laws/refunds.py   |
++------------------------------------------------------------------------------+
+
+lawkeep tried up to 200 inputs per law (the same inputs every run, so the same
+code gives the same result) · profile pr · took 3.1s
+Next step: Fix the code so each failing law holds for the example shown, then
+           run `lawkeep check` again. If you think a law itself is wrong, stop
+           and ask a person (`lawkeep propose`); do not edit laws/ directly.
+```
+
+`lawkeep check --details` adds law ids, timings and every note; `--json` gives the same
+result as one JSON document for agents. Output is plain text (no colour) when it is not a
+terminal, in CI, or with `NO_COLOR` set.
+
+A $0.25 payment would be refunded as $0.26. The failing input is saved and retried on every
+later run.
+
+More in the [developer guide](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/developer.md) and the
+[law recipes](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/recipes.md).
+
+### For coding agents
+
+The typical loop in a project that uses lawkeep:
+
+```bash
+lawkeep check --json        # 0: done. 1: read laws[] where status == "fails"; fix the code; repeat.
+                            # 2: something waits for a person (integrity issues, waiting proposals).
+                            # 3: setup problem (read "summary" and "hint").
+lawkeep propose refunds.refund_is_capped --file laws/drafts/refunds.py --reason "the person asked for partial refunds"
+lawkeep report --session    # at the end of the session: law changes, unrecorded edits, what waits
+```
+
+In `check --json`, each failing law has `simplest_failing_example` (for example `{"charge": "charge(price=Decimal('0.25'), discount_code=None)"}`) and `failure_message`. Fix the code until `check` returns 0. Follow the rules in section 4.
+
+## 4. Rules for coding agents
+
+`lawkeep init` puts this text into the project's `AGENTS.md` (and into Cursor's rule file and `.github/copilot-instructions.md`). It is binding for any coding agent working in a lawkeep project.
+
+### lawkeep: laws this code must obey
+
+This project uses [lawkeep](https://github.com/lawkeep/lawkeep). Laws are rules the code must
+obey for every input. Each law is one plain-English sentence plus an executable check, kept in
+`laws/` and fingerprinted in `laws.lock`. People decide on laws; coding agents write code that
+obeys them. Every law change is recorded and shown to the person.
+
+1. **Before you finish any task, run `lawkeep check`** (or the `check` tool of the `lawkeep`
+   MCP server; add `--json` for machine-readable output). It prints `ALL LAWS HOLD` or
+   `SOME LAWS FAIL`. Result codes: 0 all laws hold, 1 some fail, 2 waiting for a person's
+   decision, 3 setup problem.
+2. **When a law fails, fix the code, not the law.** Every failure comes with the simplest
+   failing example, for example `refund(charge=40, amount=50) returned 50, but a refund must
+   never exceed the charge`. Read it, fix the code, and run `lawkeep check` again.
+3. **Never change `laws/`, `laws.lock` or `lawkeep.toml` directly**: not with edit tools, not
+   with shell commands. Do not add `conftest.py`, `sitecustomize.py`, `.pth` files, skip or xfail
+   markers, or special cases for the failing input to get around a law; lawkeep flags all of
+   these. To change a law, write the new version to a file under `laws/drafts/` and run
+   `lawkeep propose <LAW_ID> --file laws/drafts/<file>.py --reason "<why>"`. Stricter changes
+   may apply right away; anything that weakens a law waits for the person's yes.
+4. **If a law conflicts with your task, stop and ask the person** (when they are there). Say
+   which law, show the example that fails and what you would change. Stopping to ask is a
+   successful outcome, not a failure. Nobody there? See "When no person is there" below.
+5. **Run `lawkeep approve` only when the person asks you to**, after showing them the law's
+   sentence and examples. Your coding agent will ask them to confirm the command; never
+   approve a law change on your own.
+6. **At the end of the session, show the person `lawkeep report`**: the law changes made in
+   this session, anything changed outside lawkeep, and how many things wait for their
+   decision in `lawkeep approve`.
+
+#### When no person is there (long runs on your own)
+
+A person is there when they are chatting with you in this session. If you are unsure, read
+`person_present` in `lawkeep check --json` (lawkeep's guess; it is `false` in CI, in
+`claude -p` style runs and when `LAWKEEP_PERSON_PRESENT=0`). When nobody is there and a law
+blocks you:
+
+1. **Park it:** write the change you need to `laws/drafts/` and run `lawkeep propose
+   <LAW_ID> --file laws/drafts/<file>.py --reason "<why>"`. Looser or unclear changes wait for
+   the person; note the id it prints (`h-...`).
+2. **Never work around the law:** do not edit `laws/`, `laws.lock` or `lawkeep.toml`, do not
+   special-case the failing input, and never run `lawkeep approve`.
+3. **Keep going** with every part of the task that does not depend on the blocked law.
+   Leave the parts that do depend on it undone.
+4. **End with a summary in three lists:** done; waiting for the person (each `h-...` id or
+   draft, with one line on why); not done because a law blocked it. The person decides
+   everything at once with `lawkeep approve`.
+
+## 5. Commands
+
+Every command also takes `--json` (print exactly one JSON document on stdout, nothing else) and `--root PATH` (project folder; default: search upward from the current folder for `lawkeep.toml`, else `laws/`; env `LAWKEEP_ROOT` is used when set). `lawkeep --version` prints the version. Bad usage exits with 3, never 2.
+
+| Command | What it does |
+| --- | --- |
+| `init` | set up lawkeep in this project (safe to run again) |
+| `draft` | ask your coding agent (in a separate session) to write draft laws for you to approve |
+| `approve` | read the drafted laws and proposed law changes, and say yes or no to each |
+| `check` | check that your code follows every law (answer: ALL LAWS HOLD or SOME LAWS FAIL) |
+| `strength` | test whether your laws are strong enough to catch real mistakes in the code |
+| `propose` | ask for a change to a law; changes that weaken a law wait for a person's yes |
+| `report` | show every law change, anything waiting for you, and which changed code no law protects |
+| `hook` | used by coding agents and git to call lawkeep (you do not need to run it) |
+| `mcp` | let coding agents use lawkeep as tools (check, propose, report, list_laws) |
+
+### lawkeep init
+
+set up lawkeep in this project (safe to run again)
+
+```text
+lawkeep init [--agent NAME ...] [--no-hooks] [--ci | --no-ci] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--agent` `NAME` (repeatable) | coding agent(s) to set up: claude-code, codex, cursor, copilot, all, other or none (repeat or comma-separate; default: the agents found in this folder) |
+| `--no-hooks` | do not install the git pre-commit hook or the agent hooks (only the instructions and the MCP server) |
+| `--ci` | also check the laws on every pull request (adds a GitHub Action workflow) |
+| `--no-ci` | do not add the GitHub Action workflow |
+
+Result codes: 0 done · 2 laws changed outside lawkeep, or laws.lock deleted while the history has entries (nothing touched) · 3 problem
+
+### lawkeep draft
+
+ask your coding agent (in a separate session) to write draft laws for you to approve
+
+```text
+lawkeep draft [MODULE] [--request REQUEST] [--docs PATH ...] [--dry-run] [--timeout TIMEOUT] [--actor ACTOR] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `MODULE` (positional, optional) | the code to write laws for: a module name (billing.refunds) or a file or folder path |
+| `--request` `REQUEST` | the rules you want, in plain English (e.g. "refunds never exceed the payment") |
+| `--docs` `PATH` (one or more) | documents that describe the rules (specs, policies, READMEs) |
+| `--dry-run` | only show the message lawkeep would send to your agent; start nothing |
+| `--timeout` `TIMEOUT` | how many seconds to wait for the agent |
+| `--actor` `ACTOR` | who writes the drafts, e.g. "agent:claude-code" |
+
+Result codes: 2 drafts (or the agent's edits to approved files, now waiting proposals) waiting for a person · 1 a draft fails on today's code or is weak · 3 agent not set up, failed, or wrote nothing (and changed no approved file)
+
+### lawkeep approve
+
+read the drafted laws and proposed law changes, and say yes or no to each
+
+```text
+lawkeep approve [ID ...] [--yes | --no] [--by BY] [--channel CHANNEL] [--accept-unrecorded] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `ID ...` (positional, zero or more) | what to decide: a law id, a decision id (h-...) or a draft file (default: everything waiting) |
+| `--yes` | say yes without being asked |
+| `--no`, `--reject` | say no without being asked |
+| `--by`, `--approver` `BY` | the name of the person who decided (default: your git user name) |
+| `--channel` `CHANNEL` | where the decision was made, e.g. "agent permission prompt" (recorded) |
+| `--accept-unrecorded` | also decide about law files someone changed directly, without lawkeep |
+
+Result codes: 0 decided · 2 still waiting (no terminal / `--json` and no `--yes`/`--no`) · 1 a decision could not be applied · 3
+
+### lawkeep check
+
+check that your code follows every law (answer: ALL LAWS HOLD or SOME LAWS FAIL)
+
+```text
+lawkeep check [--profile NAME] [--deep-check] [--law LAW_ID ...] [--base REF] [--no-save] [--details] [--timeout SECONDS] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--profile` `NAME` | which settings to use: 'pr' (the default: the same inputs every run, so the same code always gets the same answer) or 'deep' (many more random inputs, for nightly runs) |
+| `--deep-check` | experimental: let CrossHair pick inputs by reading the code (needs lawkeep[deep]); it may not try every path through the code |
+| `--law` `LAW_ID` (repeatable) | check only this law, by its id (repeat for several) |
+| `--base` `REF` | git branch or commit to compare with when looking for files that could get around the laws (default: HEAD) |
+| `--no-save` | do not save newly found failing inputs (normally kept in laws/failing_examples.jsonl and tried again on every check) |
+| `--details`, `-v` | also show law ids, inputs tried, timings and every note |
+| `--timeout` `SECONDS` | stop the laws after this many seconds (default: no limit) |
+
+Result codes: 0 · 1 · 2 (integrity errors / pending decisions) · 3
+
+### lawkeep strength
+
+test whether your laws are strong enough to catch real mistakes in the code
+
+```text
+lawkeep strength [--full] [--law LAW_ID ...] [--drafts] [--details] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--full` | plant every small bug lawkeep can make in every function a law runs (slower; for nightly runs or before approving important laws) |
+| `--law` `LAW_ID` (repeatable) | measure only this law (repeatable), e.g. --law refunds.refund_is_capped |
+| `--drafts` | also measure the drafts in laws/drafts/ (they are not approved yet) |
+| `--details`, `-v` | also show law ids, every planted bug a law missed and test-data notes |
+
+Result codes: 0 no law flagged · 1 some law flagged (or fails today) · 3
+
+### lawkeep propose
+
+ask for a change to a law; changes that weaken a law wait for a person's yes
+
+```text
+lawkeep propose [LAW_ID] [--file PATH] [--reason REASON] [--delete] [--actor ACTOR] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `LAW_ID` (positional, optional) | the law to change (e.g. refunds.refund_is_capped) |
+| `--file` `PATH` | the complete new version of the law's file |
+| `--reason` `REASON` | why the law should change (shown to people) |
+| `--delete` | propose deleting the law (always needs a yes) |
+| `--actor` `ACTOR` | who proposes it, e.g. "agent:claude-code" (default: agent from lawkeep.toml) |
+
+Result codes: 0 applied · 2 waiting for a person · 1 rejected (new version broken) · 3
+
+### lawkeep report
+
+show every law change, anything waiting for you, and which changed code no law protects
+
+```text
+lawkeep report [--since TIMESTAMP | --session | --all] [--base REF] [--no-protection] [--format {text,markdown}] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--since` `TIMESTAMP` | show law changes at or after this time (ISO 8601, e.g. 2026-11-21T10:00:00Z) |
+| `--session` | show law changes since the current agent session started (the default when a session start was recorded) |
+| `--all` | show every recorded law change |
+| `--base` `REF` | compare code changes with this branch, tag or commit (default: the merge-base with main or master, plus uncommitted changes) |
+| `--no-protection` | skip the check of which changed code your laws protect (it plants small bugs in a copy of the code, which takes a while) |
+| `--format` `{text,markdown}` | text for the terminal, markdown for a pull-request comment (not used with --json) |
+
+Result codes: 0 · 2 if integrity errors or pending decisions · 3
+
+### lawkeep hook
+
+used by coding agents and git to call lawkeep (you do not need to run it)
+
+```text
+lawkeep hook [EVENT] [--agent {claude-code,codex,cursor,copilot,other,git}] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `EVENT` (positional, optional) | pre-tool-use, session-start, session-end or pre-commit (or an agent name, then the event defaults to pre-tool-use) |
+| `--agent` `{claude-code,codex,cursor,copilot,other,git}` | which agent calls the hook (decides the output format; default claude-code style) |
+
+Result codes: agent hooks always 0 (the decision is in the agent's own JSON; exit 2 would mean "block" to agents but "waiting" to lawkeep) · pre-commit 0, or 1 only with `git config lawkeep.precommit block` / `LAWKEEP_PRECOMMIT=block`
+
+### lawkeep mcp
+
+let coding agents use lawkeep as tools (check, propose, report, list_laws)
+
+```text
+lawkeep mcp [--agent NAME] [--json] [--root PATH]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--agent` `NAME` | the agent using the server, recorded as the actor of proposals (claude-code, codex, cursor, copilot; default: other) |
+
+Result codes: 0 when the client disconnects · 3 if `mcp` is not installed
+
+## 6. Result codes
+
+| Code | Verdict | Meaning |
+| --- | --- | --- |
+| 0 | ALL LAWS HOLD | all laws hold (other commands: done) |
+| 1 | SOME LAWS FAIL | some laws fail (or a law could not run) |
+| 2 | WAITING FOR YOUR DECISION | waiting for a person's decision (unrecorded law change, side door, waiting proposal or draft) |
+| 3 | SETUP PROBLEM | setup problem (no project, bad lawkeep.toml, missing tool, bad usage, crash) |
+
+When several apply, the most important wins: 3 > 1 > 2 > 0 (`lawkeep.exitcodes.combine`).
+
+The verdict line is printed first in text output; in JSON it is `exit_code` plus `summary`. Agent hooks (`lawkeep hook pre-tool-use` and friends) always exit 0: their decision is in the agent's own JSON. In GitHub Actions the lawkeep action fails the job only on 3 unless you opt in (section 12).
+
+## 7. JSON output
+
+Every command with `--json` prints exactly one JSON document on stdout and nothing else. Keys are additive across versions; `schema_version` is 1.
+
+Every top-level report has these keys first: `kind`, `schema_version` (=1), `exit_code`,
+`summary` (one plain-English line), `lawkeep_version`. Shapes are the `to_dict()` of:
+
+| Command | Model | `kind` | extra keys |
+| --- | --- | --- | --- |
+| check | `CheckReport` | `check` | `profile`, `root`, `laws` [LawResult], `integrity` [IntegrityIssue], `waiting` [LawChange], `notes` [str], `started_at`, `duration_seconds`, `only_laws` [str] (the `--law` ids; empty = every law ran), `laws_known` (int or null), `waiting_for_person` {WaitingList}, `person_present` (bool), `person_present_reason` (str) |
+| strength | `StrengthReport` | `strength` | `mode` (`quick`\|`full`), `laws` [StrengthResult], `uncovered_functions` [str], `notes` |
+| report | `LawChangeReport` | `report` | `since`, `changes` [LawChange], `integrity` [IntegrityIssue], `protection` ProtectionReport\|null, `notes`, `waiting_for_person` {WaitingList}, `person_present`, `person_present_reason` |
+| (protection) | `ProtectionReport` | `protection` | `base_ref`, `functions` [ProtectionResult], `notes` |
+| propose | `ProposalResult` | `propose` | `law_id`, `direction`, `decision` (`applied`\|`waiting`\|`rejected`\|`unchanged`\|`refused`), `permission_key`, `permission_value`, `reason`, `evidence` {}, `examples` [ExampleRow], `history_id`, `person_present` (bool\|null; set when the proposal waits), `next_step` (str\|null: "Show this to the person ..." or, when nobody is there, "Parked as h-... Continue with work that does not depend on this law; list h-... in your final summary ...") |
+| init, draft, approve, hook, errors | `SimpleReport` | command name | `lines` [str], `data` {}, `hint` |
+
+- `draft` `data`: `module`, `drafts` [{`law_id`, `sentence`, `file`, `probe`, `quick_check`,
+  `quick_check_text`}], `files`, `waiting_changes` [{`history_id`, `file`, `kind`
+  (`law`\|`generators`\|`settings`\|`file`), `action`, `direction`, `law_id`, `laws`,
+  `sentence_before`, `sentence_after`, `reason`, `explanation`, `evidence`, `changes`,
+  `examples`, `new_version_runs`, `deleted`, `created`}] (the drafting agent's edits to approved
+  files, now waiting proposals; empty when there are none), `agent`, `agent_output`.
+- `approve` `data.waiting` / `data.decided` items for proposals also carry `action` and
+  `target_file`, and for the drafting agent's edits `from_draft: true`, `change_kind`,
+  `changes`, `laws`. Added 2026-11-23 (additive): every item has `group` (its kind in the one
+  waiting list: `draft`\|`proposal`\|`draft_edit`\|`unrecorded`\|`unconfirmed`; `kind` keeps
+  its old values, with the new `unconfirmed`) and `batch_safe`; unconfirmed items carry
+  `approval` {`history_ids`, `law_ids`, `action`, `direction`, `approved_by`, `channel`,
+  `sentences`, `timestamp`}; `data.waiting_for_person` {WaitingList}; `data.person_present`,
+  `data.person_present_reason`; `decided[].decision` may also be `confirmed` or `undone`.
+  `approve` with no ids lists all five kinds (laws changed outside lawkeep included) and,
+  without a terminal or with `--json`, decides nothing.
+- **WaitingList** (`waiting_for_person`, from `waiting.collect`, static, never raises):
+  `count`, `ids` [what to type after `lawkeep approve`], `by_kind` {`draft`, `proposal`,
+  `draft_edit`, `unrecorded`, `unconfirmed`: int}, `items` [{`kind`, `ref`, `title`, `ids`}],
+  `command` (`"lawkeep approve"`). Named `waiting_for_person` because `check`'s `waiting` already
+  means "pending proposals". It never changes a result code.
+- `hook session-start --json` `data` also carries `waiting_for_person`, `person_present`,
+  `person_present_reason`.
+
+Item shapes:
+
+- **LawResult**: `law_id`, `sentence`, `status` (`holds`\|`fails`\|`error`\|`skipped`\|`not_run`),
+  `level` (`L1` fixed examples only · `L2` Hypothesis · `L3` CrossHair backend · `L4` reserved),
+  `examples_tried` (int), `simplest_failing_example` ({arg: repr} or `{"call": "<text>"}` or null),
+  `failure_message`, `duration_seconds`, `evidence` {recommended: `profile`, `seed`, `backend`,
+  `max_examples`, `saved_failures_replayed`, `explicit_examples`, `stop_reason`, and for L3
+  `exhausted` (true only when CrossHair reports it explored all paths)}, `file`, `nodeid`.
+- **IntegrityIssue**: `kind`, `message` (plain English), `path`, `severity`
+  (`error` → needs a person's decision, makes `check` return at least 2; `warning`/`info` → shown only),
+  `details` {}. Kinds (B may add more; list them here):
+  `lock_missing`, `unrecorded_law_change` (file differs from lock), `unrecorded_law_added`,
+  `unrecorded_law_removed`, `lock_rewritten` (lock not explained by history:
+  `history.unexplained_lock_paths`), `append_only_violation`, `history_unreadable`,
+  `side_door_file` (conftest.py outside laws/, sitecustomize.py, usercustomize.py, `*.pth`),
+  `bytecode_file` (stray `.pyc` near laws), `skip_marker` (skip/xfail in laws), `discovery_problem`
+  (warning: e.g. sentence not a string literal, duplicate law id). Added by B: `lock_unreadable`,
+  `git_unavailable` (info), `weakened_settings` (max_examples below the profile, phases,
+  register/load_profile, reproduce_failure in `laws/`; error when the file differs from the lock,
+  else warning), `laws_conftest_hook` (hooks in `laws/conftest.py` or conftest files in its
+  sub-folders: ignored by the gate and flagged), `site_packages_side_door` (warning:
+  sitecustomize / usercustomize / code-running `.pth` in the interpreter's site-packages changed
+  after the lock; the gate never runs them because it starts Python with `-S`; the `.pth` files
+  every virtualenv has are skipped), `source_side_door` (code under test that imports lawkeep,
+  pytest or Hypothesis, mentions `LAWKEEP_*`/`HYPOTHESIS_*`, raises skips, defines comparisons
+  that always return `True`, or shadows a standard-library or installed module; error when the
+  file is new or changed since the git base, else warning), `approval_unconfirmed` (warning:
+  history entries added since the git base that claim a person's approval without
+  `details.terminal: true`, unless a later `confirm_approval`/`undo_approval` lists them;
+  `details.entries` holds their ids).
+- LawResult `evidence` keys added by B: `derandomize`, `other_failing_examples`, `cases`,
+  `bounded` (L3: true unless CrossHair reported every path explored), `inputs_thrown_away`
+  (generated inputs rejected by `assume()`/`filter()`).
+- A skip raised while a law runs (call phase), or during set-up without a `skip`/`skipif`
+  marker, makes the law `error`, not `skipped`; so does `assume()`/`reject()` called from a
+  file outside `laws/` inside the project.
+- **Law ids in strength results**: when two target files define the same law id (an approved law
+  and a draft of it), `StrengthResult.law_id` and `CatchMatrix` keys are `"<law_id>@<relative
+  file>"`; otherwise the plain id. Look results up with `strength.result_for(results, law_id, file)`.
+- Report kind `list_laws` (SimpleReport, `data.laws` = [LawInfo], `data.problems`) is returned
+  only by the MCP tool of that name.
+- **LawChange** (report row): `change` (`added`\|`updated`\|`removed`\|`waiting`\|`rejected`\|`unrecorded`\|`confirmed`\|`undone`),
+  `law_id`, `sentence`, `sentence_before`, `direction`, `permission_used`, `approved_by`, `actor`,
+  `reason`, `evidence` (str), `examples` [ExampleRow], `timestamp`, `history_id`.
+  `LawChange.from_history(entry)` builds one from a history entry.
+- **ExampleRow**: `inputs` {arg: readable value}, `result` (str), `holds` (bool), `old_holds`
+  (bool, proposals), `note`.
+- **StrengthResult**: `law_id`, `sentence`, `functions_touched` [str], `quick_check`
+  [{`function`, `variant`, `caught`, `note`}], `planted_bugs_total`, `planted_bugs_caught`,
+  `mutation_score` (derived, float\|null), `missed_bugs` [{file, line, description}], `vacuous`,
+  `vacuity_reason`, `weak_data` [str], `flags` [str] (empty = no problem found).
+- **ProtectionResult**: `function`, `file`, `status` (`protected`\|`partly`\|`not_protected`),
+  `changed_lines`, `planted_bugs_total`, `planted_bugs_caught`, `laws` [law ids], `note`.
+
+`Model.from_dict(d)` inverts `to_dict()` (unknown keys ignored), e.g. to read a report produced
+by a subprocess. Commands may pass their own text rendering with `emit(report, as_json, text=...)`.
+
+### Field names per model (from `lawkeep.models`)
+
+- **CheckReport (`check`)**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `profile`, `root`, `laws`, `integrity`, `waiting`, `notes`, `started_at`, `duration_seconds`, `only_laws`, `laws_known`, `waiting_for_person`, `person_present`, `person_present_reason`
+- **LawResult**: `law_id`, `sentence`, `status`, `level`, `examples_tried`, `simplest_failing_example`, `failure_message`, `duration_seconds`, `evidence`, `file`, `nodeid`
+- **IntegrityIssue**: `kind`, `message`, `path`, `severity`, `details`
+- **LawChange**: `change`, `law_id`, `sentence`, `sentence_before`, `direction`, `permission_used`, `approved_by`, `actor`, `reason`, `evidence`, `examples`, `timestamp`, `history_id`
+- **ExampleRow**: `inputs`, `result`, `holds`, `old_holds`, `note`
+- **StrengthReport (`strength`)**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `mode`, `laws`, `uncovered_functions`, `notes`
+- **StrengthResult**: `law_id`, `sentence`, `functions_touched`, `quick_check`, `planted_bugs_total`, `planted_bugs_caught`, `missed_bugs`, `vacuous`, `vacuity_reason`, `weak_data`, `flags`
+- **LawChangeReport (`report`)**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `since`, `changes`, `integrity`, `protection`, `notes`, `waiting_for_person`, `person_present`, `person_present_reason`
+- **ProtectionReport**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `base_ref`, `functions`, `notes`
+- **ProtectionResult**: `function`, `file`, `status`, `changed_lines`, `planted_bugs_total`, `planted_bugs_caught`, `laws`, `note`
+- **ProposalResult (`propose`)**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `law_id`, `direction`, `decision`, `permission_key`, `permission_value`, `reason`, `evidence`, `examples`, `history_id`, `person_present`, `next_step`
+- **SimpleReport (`init`, `draft`, `approve`, `hook`, errors, MCP `list_laws`)**: `kind`, `schema_version`, `exit_code`, `summary`, `lawkeep_version`, `lines`, `data`, `hint`
+- **LawInfo (MCP `list_laws` `data.laws`)**: `law_id`, `sentence`, `file`, `qualname`, `line`, `kind`, `source_hash`, `is_draft`, `explicit_id`
+- **HistoryEntry (`laws/history.jsonl` line)**: `action`, `actor`, `law_id`, `direction`, `reason`, `permission_used`, `approved_by`, `status`, `sentence_before`, `sentence_after`, `files`, `details`, `timestamp`, `id`, `refers_to`, `v`
+
+## 8. Files and formats
+
+### Project layout
+
+```
+lawkeep.toml                    settings + permissions            fingerprinted in laws.lock
+laws.lock                       fingerprints (TOML)               written only via history.record_change
+laws/                           approved laws + helpers           fingerprinted (every file)
+laws/strategies.py              project input generators (st.*)   fingerprinted
+laws/conftest.py                law fixtures (optional)           fingerprinted
+laws/history.jsonl              law history, append-only          line count + prefix hash in laws.lock
+laws/failing_examples.jsonl     saved failing inputs, append-only line count + prefix hash in laws.lock
+laws/drafts/                    drafts + pending proposals        NOT fingerprinted, ignored by the gate
+laws/drafts/drafts.json         who drafted which file (actor, request, module, created_at)   (D)
+laws/drafts/strategies.py       new generators parked until a draft is approved                (D)
+laws/drafts/proposals/<id>/     a pending proposal: proposed.py.txt + meta.json                (D)
+laws/drafts/proposals/undo/<id>/  earlier bytes of the files an approval made without a terminal
+                                changed (manifest.json + N.txt), for a later undo               (D)
+.lawkeep/                       local state (session.json, caches) not committed, not protected
+```
+
+- A pending proposal's `proposed.py.txt` ends in `.txt` so neither the gate nor draft
+  discovery collects it. The waiting history entry's `details` hold `proposal_path`,
+  `target_file`, `base_sha256` (target file when proposed), `proposal_sha256`, `delete`,
+  `evidence`, `direction_evidence`, `explanation`, `examples`, `permission_key`. `approve`
+  trusts these (append-only history) over `meta.json` and refuses a proposal whose file or
+  target changed since it was recorded.
+- Edits the drafting agent of `lawkeep draft` makes to a fingerprinted file (an approved law,
+  an existing generator in `laws/strategies.py`, `lawkeep.toml`, a helper in `laws/`) are put
+  back on disk and parked the same way, one proposal per file (`lawkeep.draft_edits`,
+  `propose.park_proposal`). Their `details` also hold `whole_file: true` (the proposal is the
+  complete new file, applied byte for byte; with `delete` the whole file is removed),
+  `from_draft: true`, `kind` (`law` | `generators` | `settings` | `file`), `changes` (plain
+  English), `laws` (law ids in the file that changed), `diff` (short unified diff),
+  `new_version_runs`, `waits_because` and, when the agent wrote a `Changed <path>: <why>` line,
+  `agent_reason`. They are never applied automatically, even when stricter, and `approve
+  --yes` without ids never decides them.
+- `propose --file laws/drafts/x.py` removes `x.py` once the proposal is applied or parked, so it
+  does not show up again as a new draft. The guard (E) keeps agents out of `laws/drafts/proposals/`.
+- When `approve` records a yes without a terminal (`details.terminal: false`), it keeps the
+  earlier bytes of every file that approval changed in `laws/drafts/proposals/undo/<history
+  id>/` (`approvals.keep_copies`). `approvals.undo` uses a copy only when its fingerprint
+  matches what the append-only history says the file was before the approval; otherwise it
+  looks in git (last 50 commits of that file), and refuses when it finds nothing. Confirming or
+  undoing removes the copies.
+
+- Project root = nearest folder upward with `lawkeep.toml`, else nearest with `laws/`
+  (`paths.find_root(start)`). `--root PATH` sets the start; without it, env `LAWKEEP_ROOT`
+  (if set) is used, else the current folder.
+- **Law files**: any `*.py` under `laws/` except `strategies.py`, `conftest.py`, `drafts/**`,
+  cache folders. **A law is any function or class decorated with `@law`**, whatever its name
+  (`discovery.iter_python_files`, `discovery.NON_LAW_FILES`). pytest's default collection only
+  finds `test_*` names in `test_*.py` files, so the gate's plugin (B) must collect `@law` items
+  itself; users may still name laws `test_*` so plain `pytest laws/` also works.
+- Fingerprinted = `lock.is_fingerprinted(root, path)`; excluded: `laws/drafts/`, the two
+  append-only files, `__pycache__`, `.hypothesis`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`,
+  `*.pyc`, `*.pyo`. Stray bytecode is a side door that the integrity check (B) reports separately.
+
+### lawkeep.toml
+
+What `lawkeep init --agent claude-code` writes:
+
+```toml
+# lawkeep settings. See https://github.com/lawkeep/lawkeep
+# This file is part of your laws: changing it outside lawkeep is flagged as an unrecorded law change.
+
+[permissions]
+# What a coding agent may do to your laws without asking you first.
+# "auto" = go ahead and tell me; "ask" = wait for my yes.
+add_law       = "auto"   # add a new law (stricter)
+add_example   = "auto"   # add an example or a saved failing case (stricter)
+rename_target = "auto"   # update a law after a rename, when lawkeep confirms the meaning is the same
+change_law    = "ask"    # change what a law checks
+weaken_law    = "ask"    # loosen, delete or skip a law, or try fewer cases (always "ask")
+
+[check]
+profile = "pr"
+
+[check.pr]               # everyday runs and pull requests: the same code always gets the same verdict
+examples    = 200
+derandomize = true
+
+[check.deep]             # nightly or on demand: a deeper random search
+examples    = 2000
+derandomize = false
+
+[project]
+# source = ["src"]   # default: "src" if it exists, else the project folder
+
+[agent]                  # the coding agent `lawkeep draft` starts in a separate session
+name = "claude-code"
+# command = "..."        # override the launch command; {prompt} is replaced by the request
+```
+
+Every key, with defaults:
+
+Parsed by `config.load_config(root)` → `Config`. Every key optional.
+
+```toml
+[permissions]            # "auto" (go ahead, tell me) or "ask" (wait for my yes)
+add_law       = "auto"   # add a new law                                   (stricter)
+add_example   = "auto"   # add an example / saved failing case             (stricter)
+rename_target = "auto"   # update a law after a rename, same meaning confirmed (same)
+change_law    = "ask"    # change what a law checks                        (unclear)
+weaken_law    = "ask"    # loosen, delete, skip, fewer cases               (looser; ALWAYS "ask")
+
+[check]
+profile = "pr"           # default profile for `lawkeep check`
+
+[check.pr]               # any [check.<name>] table defines/overrides a profile
+examples    = 200        # Hypothesis max_examples per law (>= 1)
+derandomize = true       # fixed seed: same code -> same verdict
+backend     = "hypothesis"   # or "crosshair" (L3, experimental, needs lawkeep[deep])
+deadline_ms = 0          # 0 = no per-example deadline
+# seed = 123             # only meaningful with derandomize = false
+
+[check.deep]
+examples    = 2000
+derandomize = false
+
+[project]
+source = ["src"]         # code under test; default "src" if it exists, else "."
+
+[strength]
+mutation_tool   = "mutmut"
+quick_check     = true
+min_bugs_caught = 1
+
+[agent]                  # how `lawkeep draft` starts the user's coding agent
+name    = "claude-code"  # claude-code | codex | cursor | copilot | other | ""
+command = ""             # overrides the preset; {prompt} / {prompt_file} placeholders; else stdin
+timeout_seconds = 900
+```
+
+Rules: invalid values → `ConfigError` (code 3); unknown keys/sections → `cfg.warnings` with a
+"did you mean" hint; `weaken_law = "auto"` → forced to `"ask"` plus a warning. Commands should show
+`cfg.warnings` (text: as notes; JSON: in `notes`/`data`).
+`config.AGENT_PRESETS` holds best-guess launch commands per agent; **they are not yet confirmed**
+against each agent's current CLI (D/E: verify and report).
+
+### laws.lock
+
+```toml
+# laws.lock - written by lawkeep; do not edit by hand.
+version = 1
+generated_at = "2026-11-21T10:00:00.000000Z"
+lawkeep_version = "0.1.0.dev0"
+
+[files]                                  # every fingerprinted file -> sha256 of its bytes
+"lawkeep.toml" = "sha256:<64 hex>"
+"laws/refunds.py" = "sha256:<64 hex>"
+
+[laws."refunds.refund_is_capped"]        # per law, from static discovery (no code run)
+sentence = "A refund never exceeds the original charge"
+file = "laws/refunds.py"
+hash = "sha256:<64 hex>"                 # the law's own source incl. decorators
+
+[append_only."laws/history.jsonl"]
+lines = 12                               # lines present when the lock was written
+prefix_sha256 = "sha256:<64 hex>"        # hash of exactly those lines
+[append_only."laws/failing_examples.jsonl"]
+lines = 3
+prefix_sha256 = "sha256:<64 hex>"
+```
+
+`sentence` / `hash` are omitted when unknown. The lock is rewritten **only** by
+`history.record_change()` (and nothing else should call `lock.write_lock` in production code).
+
+### laws/history.jsonl
+
+One JSON object per line, keys sorted, UTF-8, always newline-terminated, append-only.
+
+| key | type | meaning |
+| --- | --- | --- |
+| `v` | int | entry format version, `1` |
+| `id` | str | `"h-<8 hex>"`, unique |
+| `timestamp` | str | UTC ISO 8601 `...Z` |
+| `action` | str | `init`, `add_law`, `add_example`, `rename_target`, `change_law`, `remove_law`, `skip_law`, `change_settings`, `reject_draft`, `accept_unrecorded_change`, `relock`, `confirm_approval` (a person in a terminal confirmed approvals recorded without a terminal: `details.entries` [ids], `details.terminal: true`; nothing on disk changes), `undo_approval` (a person in a terminal undid them: the files go back to their earlier versions, `details.entries`, `details.undone_action`, direction the opposite of the undone change; an undone draft approval puts the file back in `laws/drafts/`), `add_strategy` (the drafting agent only added input generators to `laws/strategies.py`; recorded automatically under `add_law`, direction `stricter`, `law_id` null), `change_strategy` (a waiting or decided change to existing generators in `laws/strategies.py`, made by the drafting agent; `law_id` null), `change_law_file` (a waiting or decided change by the drafting agent to another fingerprinted file that holds no law, e.g. a helper in `laws/` or the lawkeep workflow; `law_id` null) (others accepted; document new ones here). `change_settings` is also used for the drafting agent's `lawkeep.toml` edits (`law_id` null) |
+| `law_id` | str \| null | law affected |
+| `direction` | `stricter`\|`same`\|`looser`\|`unclear`\|null | decided by evidence (D's `direction`) |
+| `actor` | str | who made the change (`agent:…`, `person:…`, `lawkeep`) |
+| `reason` | str | why (the user's request, the agent's reason) |
+| `permission_used` | `auto`\|`ask`\|`none` | which permission value allowed it |
+| `approved_by` | str \| null | `person:<name>` when a person said yes |
+| `status` | `applied`\|`waiting`\|`rejected` | `waiting` = needs a person's decision |
+| `sentence_before` / `sentence_after` | str \| null | for the report |
+| `files` | {path: sha256 \| null} | fingerprinted files changed by this entry, hash AFTER (null = deleted). Filled by `record_change` |
+| `details` | object | free-form; recommended keys: `evidence` (plain-English string shown in reports, e.g. `"catches 4 of 4 planted bugs"`), `examples` (list of ExampleRow dicts), `proposal_path` (for waiting proposals), `permission_key` |
+| `refers_to` | str \| null | id of the `waiting` entry this entry decides (approve/reject) |
+
+Pending decisions = `history.pending(entries)`: `waiting` entries no later entry `refers_to`.
+
+### laws/failing_examples.jsonl
+
+Append-only JSONL, one object per line, keys sorted, newline-terminated. Never rewritten.
+
+| key | meaning |
+| --- | --- |
+| `v` | `1` |
+| `ts` | ISO timestamp |
+| `law_id` | the law that failed |
+| `found_by` | `"lawkeep"`, `"agent:<name>"` or `"person:<name>"` |
+| `example` | `{arg: readable repr}` or null |
+| `choices` | base64 of Hypothesis's choice bytes, or null |
+| `choices_format` | `"hypothesis-choices"` or null |
+| `hypothesis_version` | version that recorded `choices` |
+| `failure` | first line of the failure message, or null |
+| `profile` | the check profile that found it, or null |
+
+Rules: lines with `choices` are replayed for that law on every run (each law gets an in-memory
+Hypothesis database whose main key returns them; keyed by law id, so a saved failure survives
+edits to the law). Only `check` adds lines (`found_by="lawkeep"`) and it never touches
+`laws.lock`; the runner itself never writes the ledger (planted-bug and draft runs cannot pollute
+it). Deduplication is by `(law_id, choices)`. Lines without `choices` are shown but cannot be
+replayed (use `@example`). Known gap: lines added after the last lock write are protected only by
+git once committed (`lock.check_append_only` knows only the line count at lock time).
+
+### .lawkeep/session.json
+
+`{"started_at": "<iso>", "agent": "<name or null>"}`, written by `history.mark_session_start`
+(E's `hook session-start`), read by `history.session_start(root)`. Local only, not protected.
+
+## 9. Writing laws
+
+Public API: `from lawkeep import law, given, st, example, settings, assume, note, event, get_law, is_law, LawMeta, __version__` (`given`, `example`, `settings`, `assume`, `note`, `event` are Hypothesis's).
+
+```python
+law(sentence: str, *, id: str | None = None, inputs: dict[str, str] | None = None) -> Callable[[T], T]
+st.money(min_value: int | float | str | Decimal = 0, max_value: int | float | str | Decimal = 1000000, *, places: int = 2) -> SearchStrategy[Decimal]
+st.percentages(*, places: int = 2) -> SearchStrategy[Decimal]
+st.non_empty_text(*, max_size: int = 50) -> SearchStrategy[str]
+st.ids(*, prefix: str = '', max_value: int = 10000) -> SearchStrategy[str]
+```
+
+```python
+from lawkeep import example, given, law, settings, st
+
+@law(
+    "A discount code never raises the price and never takes it below zero",
+    inputs={"price": "the price before the discount", "code": "the discount code typed in"},
+)
+@given(price=st.money(0, 1000), code=st.discount_codes())
+@example(price=Decimal("3.00"), code="FIVEOFF")       # a fixed case that always runs
+def discount_stays_between_zero_and_price(price, code):
+    assert 0 <= apply_discount(price, code) <= round_money(price)
+```
+
+- `@law` goes on any pytest test (above or below `@given`) or on a Hypothesis
+  `RuleBasedStateMachine`. The law id is the file path inside `laws/` plus the function name:
+  `laws/discounts.py::discount_stays_between_zero_and_price` → `discounts.discount_stays_between_zero_and_price`.
+- `inputs=` (optional) says in plain words what each input is; people see it next to the
+  example table when they approve the law. Without it lawkeep writes something like
+  "a sample discount code that lawkeep made up for testing". `lawkeep draft` asks the agent to
+  always fill it in.
+- `st` is `hypothesis.strategies` plus `st.money()`, `st.percentages()`, `st.non_empty_text()`,
+  `st.ids()`, and anything you define in `laws/strategies.py`. Names that Hypothesis already has
+  (for example `times`, `dates`, `text`) always mean Hypothesis's version; give your own
+  generators different names (`clock_times`, not `times`).
+- See [recipes.md](https://github.com/lawkeep/lawkeep/blob/main/docs/guide/recipes.md) for patterns.
+
+A complete law file (from the README):
+
+```python
+# laws/refunds.py
+from billing.refunds import RefundTooLarge, refund
+from lawkeep import given, law, st
+
+@law("A refund never exceeds the original payment")
+@given(charge=st.charges(), amount=st.money(0, 1000))
+def refund_never_exceeds_payment(charge, amount):
+    try:
+        result = refund(charge, amount)
+    except RefundTooLarge:
+        return
+    assert result.total <= charge.total
+```
+
+A law is a normal pytest test written with [Hypothesis](https://hypothesis.readthedocs.io/),
+plus a sentence. You judge the sentence and a table of concrete examples
+("payment $40, refund $50 → refused"); you never have to read the code.
+
+### Traps to avoid (from the law recipes)
+
+| Trap | Why it is a problem | Instead |
+| --- | --- | --- |
+| A limit law with no companion | passes when the code refuses everything | add the "exact" case (recipe 1) |
+| `try: ... except Exception: pass` around the whole check | swallows the failure you wanted to see | catch only the specific, allowed refusal |
+| A law written from what the code does today | it confirms the bug instead of catching it | write the sentence from what the person asked for; `lawkeep draft` deliberately does not show the law agent the code being changed |
+| A generator that rarely reaches the interesting cases (huge ranges, heavy `.filter()`) | 200 inputs, none near the edge | narrow the ranges, build valid inputs directly, add `@example`s |
+| Naming your generator like a Hypothesis one (`times`, `dates`, `text`) | `st.times()` means Hypothesis's version, not yours | pick another name (`clock_times`) |
+| Reading the real clock, network or randomness inside the code under test | flaky verdicts | pass them in (recipe 4); outside services come in v0.3 |
+| Floats for money | `0.1 + 0.2 != 0.3` | `Decimal` and `st.money()` |
+| Lowering `examples`, adding `@settings(max_examples=1)`, or `skip` to get green | it weakens the law | lawkeep records it as a looser change that needs a person's yes |
+
+## 10. Long runs without a person
+
+For overnight or CI runs, agents follow **park and keep going** (in the `AGENTS.md` snippet,
+the session-start reminder and the MCP instructions): when a law blocks them and nobody is
+there, they `lawkeep propose` the change with a reason (looser or unclear changes wait), never
+work around or edit the law, never run `lawkeep approve`, finish every part of the task that
+does not depend on that law, and end with a summary: done / waiting for the person (ids) / not
+done because blocked. When a person is there, they still stop and ask.
+
+How an agent knows: `person_present` and `person_present_reason` in `check --json`,
+`report --json`, `approve --json` and the session-start hook. It is a guess, first match wins:
+
+| Signal | `person_present` |
+| --- | --- |
+| `LAWKEEP_PERSON_PRESENT=1` / `0` (set it in your overnight script) | true / false |
+| `CI` set | false |
+| standard input is a terminal | true |
+| Claude Code `CLAUDE_CODE_SESSION_ATTENDED=1` / `0` | true / false |
+| Claude Code `CLAUDE_CODE_ENTRYPOINT=cli` / `sdk-*` (`claude -p`) | true / false |
+| anything else (Codex, Cursor, Copilot, scripts) | false |
+
+The Claude Code variables were seen in Claude Code 2.1, not taken from a documented contract.
+Other agents set nothing lawkeep recognises, so their interactive sessions read as false; the
+instructions say a person chatting with the agent counts as present. The guess never changes
+what lawkeep allows. `propose --json` adds `next_step` ("Parked as h-… Continue with work that
+does not depend on this law; list h-… in your final summary …" when nobody is there).
+
+Everything waiting is counted in the additive JSON field `waiting_for_person` (`count`, `ids`,
+`by_kind`, `items`) of `check`, `report` and `approve`, and shown as one line ("3 things wait
+for your decision (…) — run `lawkeep approve`") in `check`, `report`, the PR comment and the
+session-start/end hooks. It never changes a result code; 2 still means "waiting for a
+person's decision". An approval made without a terminal stays on the list until someone in a
+terminal confirms it (`confirm_approval` in the history) or undoes it (`undo_approval`: the law
+files go back, using a copy lawkeep kept in `laws/drafts/proposals/undo/` or the version in
+git; an undone draft returns to `laws/drafts/`).
+
+## 11. MCP server
+
+Start: `lawkeep mcp [--agent NAME]` (stdio; needs `pip install 'lawkeep[mcp]'`). `lawkeep init` writes the client config (for example `.mcp.json`).
+
+Server instructions (sent to the client):
+
+> lawkeep keeps laws: rules this project's code must obey, each a plain-English sentence plus a check. Call `check` before finishing a task; on SOME LAWS FAIL, read the simplest failing example and fix the code, not the law. Never edit laws/, laws.lock or lawkeep.toml directly: to change a law call `propose` (weakening waits for the person's yes). If a law conflicts with the task and the person is there, stop and ask them. If nobody is there (a long run on your own; `check` returns `person_present: false`): call `propose` with your reason, never work around or edit the law, never approve anything, keep going with every part of the task that does not depend on that law, and end with a summary: done / waiting for the person (with the ids) / not done because blocked. Show the person `report` at the end of the session. Result codes: 0 all laws hold, 1 some fail, 2 waiting for a person's decision, 3 setup problem. `waiting_for_person` in the results counts everything that waits for the person.
+
+Tools (each of `check`, `propose`, `report` runs `python -m lawkeep <command> --json` and returns that JSON document unchanged; there is deliberately no `approve` tool):
+
+- `check(profile: str | None = None, laws: list[str] | None = None) -> str`: Run every law in laws/ (lawkeep check). Returns the gate's JSON report: ALL LAWS HOLD or SOME LAWS FAIL, each failure with its simplest failing example. Call it before finishing. Optional: profile ('pr' or 'deep'), laws (list of law ids).
+- `propose(law_id: str, reason: str, file: str | None = None, content: str | None = None, delete: bool = False) -> str`: Propose a change to a law (lawkeep propose) instead of editing laws/ directly. Give the law id, a reason (the person's request or why), and the new version as `file` (path under laws/drafts/) or `content` (full Python source). lawkeep decides by evidence whether it is stricter or looser: stricter may apply now, weakening waits for the person's yes (exit_code 2 = waiting: tell the person; if nobody is there, follow `next_step`: keep going with work that does not depend on this law and list the `history_id` in your final summary). `delete=true` proposes removal.
+- `report(since: str | None = None, session: bool = True) -> str`: The law change report (lawkeep report): every law change in this session (or since `since`, an ISO time), anything changed outside lawkeep, and what the laws do not protect. Show it to the person at the end of the session.
+- `list_laws(include_drafts: bool = False) -> str`: List the project's laws (id, plain-English sentence, file) without running any code. include_drafts=true also lists drafts in laws/drafts/.
+
+## 12. GitHub Action
+
+`uses: lawkeep/lawkeep@v0` (composite action, `action.yml` at the repository root). It runs `lawkeep check --json` and `lawkeep report` on a fresh checkout and posts one pull-request comment (updated, never duplicated) with the verdict, the law changes and the protection report. It never blocks a merge by itself.
+
+```yaml
+# .github/workflows/lawkeep.yml
+on: pull_request
+permissions: { contents: read, pull-requests: write }
+jobs:
+  laws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # the protection report diffs against the base branch
+      - uses: lawkeep/lawkeep@v0
+```
+
+Inputs:
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `working-directory` | `.` | Folder of the project (the one with lawkeep.toml). |
+| `python-version` | `3.12` | Python version to run the laws with. |
+| `lawkeep-spec` | `lawkeep` | What to install as lawkeep: a pip requirement such as 'lawkeep==0.1.0', a path, or a git URL. |
+| `install-project` | `true` | Install the project itself first (pyproject.toml / setup.py, else requirements.txt) so laws can import it. |
+| `extra-packages` | (empty) | Extra pip requirements to install, separated by spaces (for example 'lawkeep[deep]'). |
+| `profile` | (empty) | lawkeep check profile ('pr' by default from lawkeep.toml; 'deep' for nightly runs). |
+| `base-ref` | (empty) | Git ref to compare against for the protection report and the law change report. Defaults to the pull request's base commit. |
+| `comment` | `true` | Post or update the pull-request comment ('true' or 'false'). |
+| `fail-on-broken-laws` | `false` | Fail the job when some laws fail (result code 1). Off by default: lawkeep reports, your team decides. |
+| `fail-on-waiting` | `false` | Fail the job when something waits for a person's decision (result code 2), such as an unrecorded law change. |
+| `github-token` | `${{ github.token }}` | Token used to post the comment. |
+
+Outputs:
+
+| Output | Meaning |
+| --- | --- |
+| `result-code` | lawkeep check result code: 0 all laws hold, 1 some fail, 2 waiting for a person's decision, 3 setup problem. |
+| `verdict` | ALL LAWS HOLD, SOME LAWS FAIL, WAITING FOR YOUR DECISION or SETUP PROBLEM. |
+| `summary` | One plain-English line from lawkeep check. |
+| `check-json` | Path of the lawkeep check JSON report. |
+| `report-markdown` | Path of the Markdown report (the comment body). |
+| `comment-url` | URL of the pull-request comment, when one was posted or updated. |
+
+On pull requests from forks the token is read-only: the report goes to the job summary instead. Without GitHub Actions, run `lawkeep check --json` in any CI and use the result code. `lawkeep init --ci` installs a workflow.
+
+## 13. Known limits
+
+These are the honest edges of v0.1. Each is shown to you when lawkeep can see it, but none is
+made impossible:
+
+- **The code under test is trusted.** Laws call your code in the same Python process as
+  lawkeep's law runner, so code written to cheat could change the results from inside (for
+  example by patching Hypothesis). lawkeep flags source files that import lawkeep, pytest or
+  Hypothesis, read lawkeep's settings, raise skips, or shadow a standard-library or installed
+  module, and results travel through a private channel that is closed before your code's
+  clean-up runs. Flagged is not prevented: read flagged files before trusting a green result.
+- **Approvals record who claimed to approve.** lawkeep cannot check who typed "yes". Approvals
+  made without a terminal (for example by an agent after its permission prompt) are recorded as
+  such and stay on the `lawkeep approve` list until someone in a terminal confirms or undoes
+  them (both are recorded).
+- **"Is a person there?" is a guess.** Agents use it to choose between stopping to ask and
+  parking a change for later. lawkeep reads `LAWKEEP_PERSON_PRESENT`, `CI`, whether the command
+  was typed in a terminal, and two Claude Code variables; other agents' interactive sessions
+  read as "nobody there". The guess never changes what lawkeep allows.
+- **"Same meaning" and "stricter" are evidence, not proof.** They come from sample inputs,
+  deliberately broken versions and planted bugs, plus code rules (only a consistent rename
+  counts as the same meaning; a change to a law's input generators always asks).
+- **Objects that lie about comparisons.** Code that returns values whose `==` or `<=` always say
+  "yes" passes equality and bound laws. lawkeep flags comparison methods that always return
+  `True`, but cannot catch every disguise.
+- **Git decides what is "new".** Several checks compare with a git base (`HEAD` locally, the
+  pull request's base in CI). Once a change is committed locally, `lawkeep check --base main`
+  (or CI) still shows it; plain `lawkeep check` may not.
+- **Filtered inputs.** A law that throws most generated inputs away (with `assume()`) checks
+  fewer cases than it seems; the report says how many inputs were thrown away. `assume()` called
+  from your code instead of a law counts as an error.
+
+Also not in v0.1: other programming languages, laws against a real database, race conditions, machine-checked proofs (Dafny, v0.5), strict blocking mode (v1.0, optional), Windows (hooks and the MCP launcher are POSIX sh), and any hosted service. Only Claude Code was run for real; the Codex, Cursor and Copilot adapters are checked against their documentation only.
+
+## 14. Links
+
+- Docs site: https://lawkeep.github.io/lawkeep/ (Markdown: https://lawkeep.github.io/lawkeep/index.md)
+- Repository: https://github.com/lawkeep/lawkeep
+- PyPI: https://pypi.org/project/lawkeep/
+- Guides: https://lawkeep.github.io/lawkeep/guide/developer.md, https://lawkeep.github.io/lawkeep/guide/non-technical.md, https://lawkeep.github.io/lawkeep/guide/recipes.md
+- Architecture (code contract): https://lawkeep.github.io/lawkeep/ARCHITECTURE.md · Plan and decisions: https://lawkeep.github.io/lawkeep/PLAN.md
+- Issues: https://github.com/lawkeep/lawkeep/issues · Discussions: https://github.com/lawkeep/lawkeep/discussions · Security: https://github.com/lawkeep/lawkeep/blob/main/SECURITY.md
