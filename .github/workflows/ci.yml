@@ -66,25 +66,45 @@ jobs:
             echo "$kind=$hit" | tee -a "$GITHUB_OUTPUT"
           done
 
-  test:
-    name: tests (Python ${{ matrix.python-version }})
+  # One job per Python version, not a matrix: a matrix job skipped by `if:` reports a single check
+  # named "tests (Python ${{ matrix.python-version }})" (seen on GitHub, 2026-11-24), so the
+  # required checks "tests (Python 3.10)" etc. would never report. The steps are shared with a
+  # YAML anchor; only the job id, name and PYTHON_VERSION differ.
+  test-py310:
+    name: tests (Python 3.10)
     needs: changes
     # Skipped only when the "changes" job says no code changed (a failed "changes" job runs it).
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.12", "3.13"]
-    steps:
+    env:
+      PYTHON_VERSION: "3.10"
+    steps: &test-steps
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install
         run: uv sync --all-extras
       - name: Tests (including the cheating test suite in tests/tamper)
         run: uv run pytest -q -rxX
+
+  test-py312:
+    name: tests (Python 3.12)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+    steps: *test-steps
+
+  test-py313:
+    name: tests (Python 3.13)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.13"
+    steps: *test-steps
 
   lint:
     needs: changes

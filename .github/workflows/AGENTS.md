@@ -28,7 +28,11 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   Pushes to `main` and `workflow_dispatch` runs always run every job. Gotchas: jobs are skipped
   with a **job-level `if:`** (a skipped job reports "Skipped", which satisfies a required status
   check); never add workflow-level `paths:`/`paths-ignore:` to a workflow with required checks, or
-  the checks wait forever. Each `if:` is `!cancelled() && needs.changes.outputs.<kind> != 'false'`,
+  the checks wait forever. Never skip a **matrix** job with `if:` either: GitHub then reports one
+  check named `tests (Python ${{ matrix.python-version }})` and the per-version required checks
+  never report; that is why the tests are three jobs (`test-py310`, `test-py312`, `test-py313`)
+  sharing their steps through a YAML anchor (`&test-steps`). Each `if:` is
+  `!cancelled() && needs.changes.outputs.<kind> != 'false'`,
   so if the `changes` job fails the jobs run instead of being skipped (fail open). When a new kind
   of file starts to matter to a job (a new folder, a file the docs build reads), add it to the
   pattern in the `changes` job and to the table above and in `CONTRIBUTING.md` → "What CI runs".
