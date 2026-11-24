@@ -225,8 +225,8 @@ agent through a shared base: the `lawkeep` CLI, an MCP server (`lawkeep mcp`, to
 `propose`, `report`), an `AGENTS.md` snippet and a git pre-commit hook. Agents with their own
 hooks and permission prompts get a richer adapter on top, so "yes" comes from the prompt you
 already use. `lawkeep draft` starts a fresh, separate session of your own agent to write laws
-from what you asked for (no extra account or API key). The exact launch command for each agent is
-still being confirmed during the v0.1 build.
+from what you asked for (no extra account or API key). So far only Claude Code has been run for
+real; the Codex, Cursor and Copilot launch commands are still to be tried by hand.
 
 ## What v0.1 covers
 
