@@ -1,5 +1,14 @@
 # CI for lawkeep itself: tests, lint, both example projects through the real gate, and the
 # lawkeep GitHub Action run against an example (a self-test of action.yml).
+#
+# On pull requests, the first job ("changes") lists the files the pull request changes, and the
+# other jobs skip themselves with a job-level `if:` when nothing they check was touched:
+#   code         -> tests (3 Pythons), example projects through the gate, lawkeep action self-test
+#   docs         -> docs site
+#   code or docs -> lint (ruff, pyright and the generated-docs drift check, which reads both)
+# A job skipped by `if:` reports "Skipped", which satisfies a required status check. Never use
+# workflow-level `paths:` / `paths-ignore:` here: required checks would then wait forever.
+# Pushes to main and manual runs run everything. If the file list cannot be made, everything runs.
 name: ci
 
 on:
@@ -16,8 +25,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2 # GitHub's merge commit for the PR and its first parent (the base)
+          persist-credentials: false
+      - name: Which kinds of files the change touches
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -uo pipefail
+          # Keep both lists in step with .github/workflows/AGENTS.md and CONTRIBUTING.md.
+          code='^(src/|tests/|examples/|laws/|scripts/|\.github/workflows/)|^(lawkeep\.toml|laws\.lock|pyproject\.toml|uv\.lock|action\.yml|\.pre-commit-config\.yaml)$'
+          # docs: the docs, plus everything the docs build and scripts/build_llms_docs.py read.
+          docs='^(docs/|src/|scripts/|\.github/workflows/)|^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|SECURITY\.md|action\.yml|pyproject\.toml|uv\.lock)$'
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "Not a pull request ($EVENT): run everything."
+            { echo "code=true"; echo "docs=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The checkout is GitHub's merge commit: HEAD^1 is the base branch, so this lists exactly
+          # what merging the pull request would change.
+          if ! changed=$(git diff --name-only HEAD^1 HEAD); then
+            echo "::warning::Could not list the changed files: running every job."
+            { echo "code=true"; echo "docs=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$changed" | sed 's/^/  /'
+          for kind in code docs; do
+            if grep -Eq "${!kind}" <<< "$changed"; then hit=true; else hit=false; fi
+            echo "$kind=$hit" | tee -a "$GITHUB_OUTPUT"
+          done
+
   test:
     name: tests (Python ${{ matrix.python-version }})
+    needs: changes
+    # Skipped only when the "changes" job says no code changed (a failed "changes" job runs it).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,6 +87,8 @@ jobs:
         run: uv run pytest -q -rxX
 
   lint:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.code != 'false' || needs.changes.outputs.docs != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -53,6 +108,8 @@ jobs:
 
   docs:
     name: docs site
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -69,6 +126,9 @@ jobs:
 
   examples:
     name: example projects through the gate
+    needs: changes
+    # Skipped only when the "changes" job says no code changed (a failed "changes" job runs it).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -107,6 +167,9 @@ jobs:
 
   action-self-test:
     name: lawkeep action on examples/billing
+    needs: changes
+    # Skipped only when the "changes" job says no code changed (a failed "changes" job runs it).
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

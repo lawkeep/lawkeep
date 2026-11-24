@@ -1,4 +1,10 @@
 # Flags pull requests that add dependencies with known vulnerabilities (uv.lock, GitHub Actions).
+#
+# The review only has something to look at when a dependency manifest or a workflow changes, so
+# the "dependency review" job skips itself (job-level `if:`) on other pull requests. A job skipped
+# by `if:` reports "Skipped", which satisfies the required status check; never use workflow-level
+# `paths:` here, that would leave the required check waiting forever. If the file list cannot be
+# made, the review runs.
 name: dependency review
 
 on:
@@ -8,8 +14,38 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: dependency changes
+    runs-on: ubuntu-latest
+    outputs:
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2 # GitHub's merge commit for the PR and its first parent (the base)
+          persist-credentials: false
+      - name: Does the change touch dependencies or workflows
+        id: filter
+        run: |
+          set -uo pipefail
+          # Manifests anywhere (the root and the examples), the action and every workflow.
+          deps='(^|/)(pyproject\.toml|uv\.lock|requirements[^/]*\.txt|setup\.py|setup\.cfg|action\.ya?ml)$|^\.github/workflows/'
+          # The checkout is GitHub's merge commit: HEAD^1 is the base branch.
+          if ! changed=$(git diff --name-only HEAD^1 HEAD); then
+            echo "::warning::Could not list the changed files: running the review."
+            echo "deps=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$changed" | sed 's/^/  /'
+          if grep -Eq "$deps" <<< "$changed"; then hit=true; else hit=false; fi
+          echo "deps=$hit" | tee -a "$GITHUB_OUTPUT"
+
   dependency-review:
     name: dependency review
+    needs: changes
+    # Skipped only when the "changes" job says no manifest or workflow changed.
+    if: ${{ !cancelled() && needs.changes.outputs.deps != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

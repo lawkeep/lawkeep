@@ -42,6 +42,13 @@ versions). While lawkeep is 0.x, a minor version may change behaviour.
 
 ### Changed
 
+- CI on pull requests runs only what the change touches: a first job (`changes`) lists the
+  changed files; the tests (Python 3.10, 3.12, 3.13), both example projects through the gate and
+  the action self-test run only when code changed, the `docs site` build only when the docs (or a
+  file they are built from) changed, and `lint` (with the generated-docs drift check) when either
+  did. `dependency review` runs only when a dependency manifest, `action.yml` or a workflow
+  changed. Jobs are skipped with a job-level `if:`, so required checks report "Skipped" and never
+  wait; pushes to `main` still run everything. See `CONTRIBUTING.md` → "What CI runs".
 - The website's front page is now the user documentation. The internal onboarding guide for
   contributors moved to https://lawkeep.github.io/lawkeep/contributing/onboarding.html (the old
   `/onboarding.html` redirects there) and its Markdown version from `docs/index.md` to

@@ -20,6 +20,7 @@ on:
       - CHANGELOG.md
       - CONTRIBUTING.md
       - src/lawkeep/adapters/templates/agents_snippet.md
+      - src/lawkeep/__init__.py # the version shown on the site (docs/site/conf.py)
       - pyproject.toml
       - uv.lock
       - .github/workflows/pages.yml

@@ -41,5 +41,6 @@ uv run sphinx-build -W --keep-going -b html docs/site _build/site   # warnings a
 uv run python scripts/build_llms_docs.py --check                    # generated pages up to date
 ```
 
-CI: the `docs` job in `.github/workflows/ci.yml` builds the site on every pull request (plus a
+CI: the `docs` job (`docs site`) in `.github/workflows/ci.yml` builds the site on every pull request
+that touches `docs/` or a file the site or the generated pages are made from (plus a
 non-blocking link check); `.github/workflows/pages.yml` publishes it from `main`.

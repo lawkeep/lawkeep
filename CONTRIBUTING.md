@@ -83,6 +83,24 @@ main  ──●────────●──────────●─�
   pyright, `lawkeep check`, CHANGELOG, folder `AGENTS.md` files).
 - One topic per PR. Keep the `Unreleased` section of `CHANGELOG.md` up to date in the same PR.
 
+### What CI runs
+
+On a pull request, CI runs only the jobs that check what the change touches (the first job,
+`changes`, looks at the changed files). A skipped job shows as "Skipped" and still counts as
+passed for merging.
+
+| Job | Runs when the PR changes |
+| --- | --- |
+| `tests (Python 3.10)`, `tests (Python 3.12)`, `tests (Python 3.13)`, `example projects through the gate`, `lawkeep action on examples/billing` | code: `src/`, `tests/`, `examples/`, `laws/`, `scripts/`, `.github/workflows/`, `lawkeep.toml`, `laws.lock`, `pyproject.toml`, `uv.lock`, `action.yml`, `.pre-commit-config.yaml` |
+| `docs site` | docs: `docs/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, or a file the docs are built from (`src/`, `scripts/`, `action.yml`, `pyproject.toml`, `uv.lock`, `.github/workflows/`) |
+| `lint` (ruff, pyright, generated docs up to date) | code or docs |
+| `dependency review` | a dependency manifest (`pyproject.toml`, `uv.lock`, ...), `action.yml` or a workflow |
+| `pr title`, `laws` (lawkeep checking its own laws, `lawkeep.yml`) | always |
+
+Pushes to `main` run every job. So a docs-only PR builds the docs site and runs `lint` but skips
+the 9-minute test suite; run `uv run pytest -q` locally anyway if you touched anything the tests
+read.
+
 ## Versions, tags and releases
 
 | Thing | Convention | Example |

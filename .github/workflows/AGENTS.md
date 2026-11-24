@@ -9,12 +9,38 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   `linkcheck` step with `continue-on-error`; not a required check unless added to the ruleset),
   both examples through
   `lawkeep check`, each planted bug failing the gate, and a self-test of `action.yml`.
+
+  **Only what the change touches runs on pull requests.** The first job, `changes`, lists the
+  files with `git diff --name-only HEAD^1 HEAD` on GitHub's merge commit (so exactly what merging
+  would change; no third-party action, no API call) and sets two outputs:
+
+  | Output | True when the PR changes |
+  | --- | --- |
+  | `code` | `src/`, `tests/`, `examples/`, `laws/`, `scripts/`, `.github/workflows/`, `lawkeep.toml`, `laws.lock`, `pyproject.toml`, `uv.lock`, `action.yml`, `.pre-commit-config.yaml` |
+  | `docs` | `docs/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, plus what the docs build and `scripts/build_llms_docs.py` read: `src/`, `scripts/`, `action.yml`, `pyproject.toml`, `uv.lock`, `.github/workflows/` |
+
+  | Job | Runs when |
+  | --- | --- |
+  | `lint` (ruff, pyright, generated-docs drift check) | `code` or `docs` |
+  | `tests (Python 3.10/3.12/3.13)`, `example projects through the gate`, `lawkeep action on examples/billing` | `code` |
+  | `docs site` | `docs` |
+
+  Pushes to `main` and `workflow_dispatch` runs always run every job. Gotchas: jobs are skipped
+  with a **job-level `if:`** (a skipped job reports "Skipped", which satisfies a required status
+  check); never add workflow-level `paths:`/`paths-ignore:` to a workflow with required checks, or
+  the checks wait forever. Each `if:` is `!cancelled() && needs.changes.outputs.<kind> != 'false'`,
+  so if the `changes` job fails the jobs run instead of being skipped (fail open). When a new kind
+  of file starts to matter to a job (a new folder, a file the docs build reads), add it to the
+  pattern in the `changes` job and to the table above and in `CONTRIBUTING.md` → "What CI runs".
 - `lawkeep.yml`: lawkeep checking its own repository (the root `laws/`, three laws about
   `lawkeep.exitcodes`). Installed by `lawkeep init`, fingerprinted in the root `laws.lock`, so it
   is protected: agents cannot edit it, and a hand edit shows up as an unrecorded law change.
 - `nightly.yml`: deep search on the examples.
 - `dependency-review.yml` (job `dependency review`): on pull requests, fails when a change adds a
-  dependency with a known high-severity vulnerability.
+  dependency with a known high-severity vulnerability. A first job `dependency changes` skips the
+  review (job-level `if:`, so the required check reports Skipped) unless the PR touches a manifest
+  (`pyproject.toml`, `uv.lock`, `requirements*.txt`, `setup.py`, `setup.cfg`, anywhere), an
+  `action.yml` or a workflow.
 - `pr-title.yml` (job `pr title`): PR titles must be Conventional Commits with the types from
   `CONTRIBUTING.md` and a summary that starts lowercase and has no full stop. Change the type list
   here and in `CONTRIBUTING.md` together.
@@ -28,7 +54,9 @@ CI for the lawkeep repository itself (see `README.md` here for the table).
   the build stops if that line changes) and `contributing/onboarding.md`, a redirect from the old
   `/onboarding.html`, and Markdown copies of PLAN, ARCHITECTURE, OUTPUT-STYLE, README, CHANGELOG and
   CONTRIBUTING, and deploys it to https://lawkeep.github.io/lawkeep/ on pushes to `main` that touch
-  `docs/`, those root files, the agent snippet, `pyproject.toml`/`uv.lock` or the workflow.
+  `docs/`, those root files, the agent snippet, `src/lawkeep/__init__.py` (the version on the
+  site), `pyproject.toml`/`uv.lock` or the workflow (workflow-level `paths:` is fine here: it runs
+  only on pushes and has no required check).
   Pages must be set to "GitHub Actions" in the repository settings.
 - The required status checks on `main` (ruleset) use the job names as GitHub shows them: renaming
   a job in `ci.yml`, `pr-title.yml` or `dependency-review.yml` means updating the ruleset too.
